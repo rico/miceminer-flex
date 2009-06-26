@@ -218,10 +218,6 @@ background-color: #000000;
 
 .gridsComp {
 	backgroundColor:#878787;
-}
-
-.compBox {
-	backgroundColor:#878787;
 	divider-skin: Embed("/assets/img/divider_white.png")
 }
 

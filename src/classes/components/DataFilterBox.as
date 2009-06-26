@@ -10,8 +10,8 @@ package classes.components
 	import mx.containers.HBox;
 	import mx.controls.CheckBox;
 	import mx.controls.ComboBox;
-	import mx.events.CollectionEvent;
 	import mx.events.ListEvent;
+	import mx.events.SliderEvent;
 	
 	/**
 	 * Handles data filtering of a <b>Grid</b> component.
@@ -212,6 +212,7 @@ package classes.components
 			private function changeFilterType(event:ListEvent):void
 			{
 				_activeSearchComp.dbData.filterFunction = null;
+				_activeSearchComp.dbData.refresh();
 				_activeSearchComp.activeFilter = _activeSearchComp.filterInformation[ event.currentTarget.selectedIndex ];
 				//_activeSearchComp.activeFilter = _activeSearchComp.selectedItem;
 					
@@ -234,33 +235,50 @@ package classes.components
 					case "alphanum": 
 						// add to display list
             			_filterBox.addChild(_searchFilterText);
-            			// set value
-            			_searchFilterText.text = _activeSearchComp.activeFilter.value;
+            			
+            			// set filter function
             			_activeSearchComp.dbData.filterFunction = alphanumFilterFunction;
+            			
+            			// set filter value
+            			_searchFilterText.text = _activeSearchComp.activeFilter.value;
+            			
+            			// initialize the filter
+            			_searchFilterText.dispatchEvent( new Event(Event.CHANGE) );
             			
 					break;
 					case "numeric":
 						// add to display list
 						_filterBox.addChild(_searchFilterRangeNumeric);
+						
+						// set filter function
+						_activeSearchComp.dbData.filterFunction = rangeFilterNumericFunction;
+						
 						// set slider configuration
 						_searchFilterRangeNumeric.setConf(_activeSearchComp.activeFilter);
+						
 						// set slider values
 						_searchFilterRangeNumeric.setValues(_activeSearchComp.activeFilter.value);
 						
-						_activeSearchComp.dbData.filterFunction = rangeFilterNumericFunction;
+						// apply filter
+						_searchFilterRangeNumeric.slider.dispatchEvent( new SliderEvent(SliderEvent.CHANGE) );
+						
+						
 					break;
 					case "date":
 						// add to display list
 						_filterBox.addChild(_searchFilterRangeDate);
+						
+						// set filter function 
+						_activeSearchComp.dbData.filterFunction = rangeFilterDateFunction;
+						
 						// set slider configuration
 						_searchFilterRangeDate.setConf(_activeSearchComp.dbData, _activeSearchComp.activeFilter);
+						
 						// set slider values (date range slider)
 						_searchFilterRangeDate.setValues(_activeSearchComp.activeFilter.value);
 						
-						_activeSearchComp.dbData.filterFunction = rangeFilterDateFunction;
-						// sort Array of array collection for the requested filter column
-						// so we can search based position in array in the filter function 
-						
+						// apply filter
+						_searchFilterRangeDate.slider.dispatchEvent( new SliderEvent(SliderEvent.CHANGE) );
 						
 					break;
 					default:

@@ -146,7 +146,7 @@ package classes.components
 			_mainBox.percentWidth = 100;
 			_mainBox.horizontalScrollPolicy = "off";
 			_mainBox.verticalScrollPolicy = "off";
-			_mainBox.styleName = "compBox";
+			_mainBox.styleName = "gridsComp";
 			
 			addChild(_mainBox);
 
