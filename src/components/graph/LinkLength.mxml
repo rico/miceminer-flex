@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * The MIT License
+ *
+ * Copyright (c) 2008
+ * United Nations Office at Geneva
+ * Center for Advanced Visual Analytics
+ * http://cava.unog.ch
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+-->
+<mx:VBox 
+	xmlns:mx="http://www.adobe.com/2006/mxml" verticalGap="3">
+	
+	<mx:HBox width="100%" horizontalGap="2">
+		<mx:Label
+			id="lllabel"
+			toolTip="Use this control to length of links. Used when AutoFit is disabled."
+			text="Link Length:"
+			styleName="graphControlLabel"
+			/>
+		<mx:Label text="{lslider.value}" styleName="graphControlHighlight" />
+	</mx:HBox>
+	
+		
+		<mx:HSlider
+			tickInterval="25"
+			width="100%"
+			id="lslider"
+			minimum="1"
+			maximum="400"
+			liveDragging="true"
+			snapInterval="1"
+			change="updateLinkLength()"
+			styleName="filterSlider"
+			/>
+	
+	
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.datastructures.GraphData;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
+			import mx.utils.ObjectUtil;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.IVisualGraph;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.ILayoutAlgorithm;
+			import org.un.cava.birdeye.ravis.assets.icons.EmbeddedIcons;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
+			
+			/* critical */
+			private var _vgraph:VisualGraph;
+			private var _graphData:GraphData;
+			
+			/**
+			 * The <code>vgraph</code> the control acts on.
+			 */
+			[Bindable]
+			public function get vgraph():VisualGraph {
+				return _vgraph;
+			}
+			
+			/**
+			 * @private
+			 */
+			public function set vgraph(v:VisualGraph):void {
+				_vgraph = v;
+				registerListeners();
+			}
+
+			/**
+			 * The <code>GraphData</code> instance this control acts on.
+			 * 
+			 * @see classes.datastructures.GraphData
+			 */ 
+			[Bindable]
+			public function get graphData():GraphData
+			{
+				return _graphData;
+			}
+			
+			/**
+			 * @private
+			 */
+			public function set graphData(graph:GraphData):void
+			{
+				_graphData = graph;
+				
+				if( isNaN(_graphData.linkLength) ) {
+					lslider.value = 200;
+				} else {
+					lslider.value = _graphData.linkLength; 
+				}
+				
+				updateLinkLength();
+					
+			}
+			
+			
+			/**
+			 * Enable or disable this component.
+			 */
+			override public function set enabled(e:Boolean):void {
+				if(lllabel != null && lslider != null) {
+					if(e == true) {
+						lllabel.setStyle("color",0x000000);
+						lslider.alpha=1;
+					} else {
+						lllabel.setStyle("color",0xCCCCCC);
+						lslider.alpha=0.3;
+					}
+				}
+				/* call superclass (VBox) */
+				super.enabled = e;
+			}
+			
+			/**
+			 * Event handler to be triggered in case the
+			 * layouter in VGraph has changed.
+			 * Only used to apply the current value to the new layouter.
+			 * */
+			private function layouterChanged(e:VGraphEvent = null):void {
+				
+				//* check if we have a layouter at all */
+				if(_vgraph.layouter == null || _vgraph.layouter is DirectPlacementLayouter) {
+					lslider.enabled = false;
+					lslider.alpha = 0.5;
+				} else {
+					lslider.enabled = true;
+					lslider.alpha = 1;
+					
+					_vgraph.layouter.linkLength = lslider.value;
+					_vgraph.layouter.layoutChanged = true;
+				} 
+				
+			}
+				
+			
+			/** 
+			 * Update the link length property of the <code>vgraph</code> instance. 
+			 * 
+			 * <p>Updates the following properties:</p>
+			 * <code>
+			 * <ul>
+			 * <li>graphData.linkLength</li>
+			 * <li>vgraph.layouter.linkLength</li>
+			 * <li>vgraph.layouter.layoutChanged</li>
+			 * </ul>
+ 			 * </code>
+ 			 * <p>And calles the <code>vgraph.draw()</code> method to commit the changes.</code>
+ 			 */		
+			public function updateLinkLength():void {
+				
+				/* check if we have a layouter at all */
+				if(_vgraph == null || _vgraph.layouter == null) {
+					lslider.enabled = false;
+					lslider.alpha = 0.5;
+				} else {
+					
+					lslider.enabled = true;
+					lslider.alpha = 1;
+					
+					/* update the value */
+					_graphData.linkLength = lslider.value;
+					_vgraph.layouter.linkLength = lslider.value;
+					_vgraph.layouter.layoutChanged = true;
+					
+					/* trigger redraw */
+					_vgraph.draw();
+				} 
+
+				
+			}
+			
+			/**
+			 * Adds the listeners to update on changes in the VGraph
+			 * */
+			private function registerListeners():void {
+				_vgraph.addEventListener(VGraphEvent.LAYOUTER_CHANGED,layouterChanged);
+			}
+		]]>
+	</mx:Script>
+</mx:VBox>

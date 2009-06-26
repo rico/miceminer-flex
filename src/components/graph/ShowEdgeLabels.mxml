@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" >
+	<mx:CheckBox id="showLabels"
+		fontSize="12"
+		fontFamily="MyriadPro"
+		fontWeight="normal"
+		color="#FFFFFF"
+		textRollOverColor="#FFFFFF"
+		textSelectedColor="#FFFFFF"
+		iconColor="#FFFFFF"
+		selected="{graphData.displayEdgeLabels}"
+		click="{vgraph.displayEdgeLabels = showLabels.selected; graphData.displayEdgeLabels = showLabels.selected}"
+		labelPlacement="left"
+		label="Display edge Labels" 
+		themeColor="haloSilver" /> 
+		
+	<mx:Script>	
+		<![CDATA[
+			
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+			import classes.datastructures.GraphData;
+			
+			/**
+			 * The <code>vgraph</code> the control acts on.
+			 */ 
+			[Bindable]
+			public var vgraph:VisualGraph;
+			
+			/**
+			 * The <code>GraphData</code> instance this control acts on.
+			 * 
+			 * @see classes.datastructures.GraphData
+			 */ 
+			[Bindable]
+			public var graphData:GraphData;
+			
+		]]>
+	</mx:Script>
+</mx:HBox>

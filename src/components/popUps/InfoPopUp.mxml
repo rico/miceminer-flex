@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	styleName="infoPopUp"
+	verticalScrollPolicy="off"
+	horizontalScrollPolicy="off"
+	creationComplete="build()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.events.EffectEvent;
+			import mx.utils.StringUtil;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;			
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/info.png")]
+            private var infoIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/close.png")]
+            private var closeIcon:Class;
+	
+			private function build():void
+			{
+				this.width = parentApplication.width/2;
+				this.height = parentApplication.height/2;
+				
+				PopUpManager.centerPopUp(this);
+				showHide.play([this]);
+				
+				var style:StyleSheet = new StyleSheet();
+								
+				var a:Object = new Object();
+				a.fontWeight = "normal";
+				a.textDecoration = "underline"
+				a.color = "#666666";
+				
+				var p:Object = new Object();
+				p.fontFamily = "Verdana, sans-serif";
+				p.fontSize = "11";
+				p.fontWeight = "normal";
+				
+				var attention:Object = new Object();
+				attention.fontWeight = "bold";
+				attention.color = "#f92f10";
+				
+				style.setStyle(".attention", attention);
+				style.setStyle("a", a);
+				style.setStyle("p", p); 
+				
+				content.styleSheet = style;
+
+			}
+			
+			/**
+			 * The info text to display.
+			 */
+			public function set infoText(info:String):void
+			{
+				content.htmlText = info;
+				
+			}
+			
+			/**
+			 * @private
+			 */
+			private function openUrl(event:TextEvent):void
+			{
+        		navigateToURL( new URLRequest( event.text) ,"_blank");
+			}
+			
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showHide.play([this],true);
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				
+				PopUpManager.removePopUp(this);	
+			}
+					
+		]]>
+	</mx:Script>
+	
+	<mx:Parallel id="showHide">
+		<mx:children>
+			<mx:Fade alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
+		</mx:children>
+	</mx:Parallel>
+		
+	<mx:HBox width="100%" verticalAlign="top" horizontalGap="5">
+		<mx:Image source="{infoIcon}"/>
+		<mx:Label styleName="genLabelDark" text="Information &amp; Help" />			
+	</mx:HBox>
+
+	<mx:HRule styleName="darkRule" width="100%"  />
+	
+	<mx:TextArea id="content" width="100%" height="100%"
+		condenseWhite="true"
+		editable="false" 
+		borderStyle="none" backgroundAlpha="0"
+		horizontalScrollPolicy="off"
+		verticalScrollPolicy="auto"
+		verticalScrollBarStyleName="infoScrollStyle"
+		link="openUrl(event)" />
+		
+	<mx:HBox width="100%">
+		<mx:Spacer width="100%"/>
+		<mx:Button styleName="normButtonDark" id="doneBut" icon="{closeIcon}" label="close" click="closeThis()" />
+	</mx:HBox>
+</mx:VBox>

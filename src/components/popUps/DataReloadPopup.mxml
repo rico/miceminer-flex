@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	styleName="reloadDataPopUp"  
+>
+		<mx:Script>
+		<![CDATA[
+			
+			
+			[Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/cancel.png")]
+            private var cancelIcon:Class;
+
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%" height="100%" 
+		verticalAlign="middle" horizontalAlign="center"
+		 paddingBottom="20" paddingLeft="20" paddingTop="20" paddingRight="20">
+		<mx:Label text="To get the data for the selected date range hit the reload button below." fontSize="11" fontWeight="normal" color="#FFFFFF" />
+		<mx:HBox horizontalGap="5" horizontalAlign="center" width="100%" >
+			<mx:Button icon="{reloadIcon}" visible="true"
+	 		 	id="reloadDataBut" styleName="reloadButton" height="23" label="reload" labelPlacement="right"/>
+	 		<mx:Button icon="{cancelIcon}" visible="true"
+	 			 id="cancelBut" styleName="normButton" height="23" label="cancel" labelPlacement="right" />	 	
+		</mx:HBox> 
+		
+	</mx:VBox>
+
+</mx:Canvas>

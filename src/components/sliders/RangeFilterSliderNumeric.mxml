@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:flexlib="http://code.google.com/p/flexlib/"
+	horizontalGap="5"
+	verticalAlign="middle"
+	width="100%"
+	height="100%"
+	creationComplete="setSliderWidth()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.sliderClasses.SliderDataTip;
+			import mx.controls.sliderClasses.Slider;
+			import mx.controls.Label;
+			import classes.skins.CustSliderThumbClass;
+			import classes.events.SliderChangedEvent;
+			
+			/**
+			 * The maximum allowed value on the slider.
+			 */
+			[Bindable]
+			public var maxVal:int;
+			
+			/**
+			 * The minimum allowed value on the slider.
+			 */
+			[Bindable]
+			public var minVal:int;
+			
+			/**
+			 * The label showed on the left of the slider control.
+			 */
+			[Bindable]
+			public var minValLabel:String;
+			
+			/**
+			 * The label showed on the right of the slider control.
+			 */
+			[Bindable]
+			public var maxValLabel:String;
+            
+			/**
+		 	 * Set the configuration for the numeric slider
+			 *
+			 * @param colInfo The <code>Object</code> contains the <code>minimum</code> and <code>maximum slider</code> values and indicates which field (column)
+			 *					in the <code>ArrayCollection</code> is the one we filter. 
+			 */
+			public function setConf(colInfo:Object):void
+			{
+				minVal = colInfo.min;
+				minValLabel = minVal.toString();
+				
+				maxVal= colInfo.max;
+				maxValLabel = maxVal.toString();
+				
+				slider.values = [minVal,maxVal];
+				setSliderWidth();			
+				disableResetBut();
+				
+			}
+			
+			/**
+		 	 * Set the values of the slider
+			 *
+			 * @param values An <code>array</code> holding the values for each thumb.
+			 */
+			public function setValues(values:Array):void
+			{
+				
+				// set values
+				values.sort(Array.NUMERIC);
+				slider.values = values;
+				
+				// set labels
+				minValLabel = values[0].toString();
+				maxValLabel = values[1].toString();
+				
+				slider.values[0] != minVal || slider.values[1] != maxVal ? enableResetBut() : disableResetBut();
+			}
+			
+			/**
+			 * Set slider values to minimal and maximal values.
+			 * 
+			 * <p>Per default a <code>SliderChangedEvent</code> is dispatched.</p>
+			 * 
+			 * @param quit If set to <code>true</code> no <code>SliderChangedEvent</code> is dispatched.
+			 * 
+			 * @see classes.events.SliderChangedEvent
+			 */
+			 public function reset(quiet:Boolean = false):void
+			 {
+			 	if(slider != null) {
+				 	slider.values = [minVal, maxVal];
+				 	
+				 	minValLabel = minVal.toString();
+	            	maxValLabel = maxVal.toString();
+				 	
+				 	if(!quiet) dispatchEvent(new SliderChangedEvent("sliderChangedNumeric",slider.values));
+				 	
+				 	disableResetBut();
+			 	}
+			 }
+			
+				
+			/**
+			* @private
+			*/
+			private function filterData():void
+			{
+            	dispatchEvent(new SliderChangedEvent("sliderChangedNumeric", slider.values));
+            	minValLabel = slider.values[0].toString();
+            	maxValLabel = slider.values[1].toString();
+            	
+            	slider.values[0] != minVal || slider.values[1] != maxVal ? enableResetBut() : disableResetBut();
+			}
+			
+			/**
+			 * @private
+			 */
+			private function enableResetBut():void
+			{
+				resetBut.alpha = 1.0;
+				resetBut.enabled = true;
+				resetBut.toolTip = "click to reset filter slider";
+			}
+			
+			/**
+			 * @private
+			 */
+			private function disableResetBut():void
+			{
+				resetBut.alpha = 0.3;
+				resetBut.enabled = false;
+				resetBut.toolTip = "drag sliders to enable this button";
+			}
+			
+			/**
+			 * set the slider width property
+			 */
+			private function setSliderWidth():void
+			{
+				var gapsWidth:int = (this.numChildren -1  ) * (this.getStyle("horizontalGap") as int);
+				
+				slider.maxWidth = this.width - filterLabelVal1.width - filterLabelVal2.width - resetBut.width - gapsWidth -20;
+				slider.width = (maxVal-minVal * 7);
+				
+				slider.width > slider.maxWidth ? slider.width = slider.maxWidth : slider.width = slider.width;
+				slider.width < slider.minWidth ? slider.width = slider.minWidth : slider.width = slider.width;
+				slider.invalidateSize();
+				
+				//trace("[RangeFilterSliderNumeric].slider.maxWidth:\t" + slider.maxWidth);
+				//trace("[RangeFilterSliderNumeric].slider.width:\t" + slider.width); 
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:HBox id="filterLabelVal1" styleName="filterLabelCanv" height="20" horizontalGap="0">
+		<mx:Label styleName="filterLabel" text="{minValLabel}" height="20"/>
+	</mx:HBox>
+		
+	<flexlib:HSlider id="slider" thumbCount="2" styleName="filterSlider" minWidth="500" minHeight="20" 
+		sliderThumbClass="classes.skins.CustSliderThumbClass"
+		toolTip="drag the handlers to set a range. You can shift the range by dragging the bar between the handlers." 
+		snapInterval="{maxVal - minVal > 1000 ? 10 : 1}" minimum="{minVal}" maximum="{maxVal}" values="{[minVal, maxVal]}" 
+		change="filterData()" 
+		/>
+		
+	<mx:HBox id="filterLabelVal2" styleName="filterLabelCanv" height="20" horizontalGap="0">	
+		<mx:Label styleName="filterLabel" text="{maxValLabel}" height="20"/>
+	</mx:HBox>
+	
+	<mx:Button id ="resetBut" icon="@Embed(source='/assets/img/clear.png')" visible="true" styleName="normButton" height="20" label="reset filter"
+		 click="reset()" /> 
+	
+</mx:HBox>

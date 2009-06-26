@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services-config>
+	<services>
+		<!-- local testing  -->
+		<service id="amfphp-flashremoting-local" class="flex.messaging.services.RemotingService" messageTypes="flex.messaging.messages.RemotingMessage">
+			<destination id="amfphp-local">
+				<channels>
+					<channel ref="local-conf"/>
+				</channels>
+				<properties>
+					<source>*</source>
+				</properties>
+			</destination>
+		</service>
+		<!-- production  -->
+		<service id="amfphp-flashremoting-uzh" class="flex.messaging.services.RemotingService" messageTypes="flex.messaging.messages.RemotingMessage">
+			<destination id="amfphp-uzh">
+				<channels>
+					<channel ref="uzh-conf"/>
+				</channels>
+				<properties>
+					<source>*</source>
+				</properties>
+			</destination>
+		</service>
+	</services>
+	<channels>
+		<!-- local testing  -->	
+		<channel-definition id="local-conf" class="mx.messaging.channels.AMFChannel">
+			<endpoint uri="http://mice:80/amfphp/gateway.php" class="flex.messaging.endpoints.AMFEndpoint" />
+		</channel-definition>
+		<!-- production  -->
+		<channel-definition id="uzh-conf" class="mx.messaging.channels.AMFChannel">
+			<endpoint uri="http://zool-miceminer.uzh.ch:80/amfphp/gateway.php" class="flex.messaging.endpoints.AMFEndpoint"/>
+		</channel-definition>
+	</channels>
+</services-config>

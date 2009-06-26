@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns="*" 
+	backgroundColor="#333333"
+	backgroundAlpha="0.75"
+	initialize="init()"
+	>
+	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
+	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.collections.XMLListCollection;
+			import org.un.cava.birdeye.ravis.components.renderers.nodes.BaseNodeRenderer;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualNode;
+			import org.un.cava.birdeye.ravis.graphLayout.data.Node;
+			import org.un.cava.birdeye.ravis.graphLayout.data.Edge;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphRendererEvent;
+		
+			private var _selected:Boolean = false;
+			private var _active:Boolean = true;
+			private var _highlight:Boolean = false;
+			private var _glow:GlowFilter = new GlowFilter();
+			private var _filteredEdges:XMLListCollection;
+			
+			private var _bgColor:Number;
+			
+			[Bindable]
+			public var _labelText:String;
+			
+			
+			public function init():void
+			{
+				// Set active as default state
+				_active = true;
+				
+				// label text
+				_labelText = this.data.data.@id;
+				
+				// background color
+				if(this.data.data.@sex == 'm') {
+					_labelText += " (m)";
+					this.setStyle("backgroundColor", 0x43aaff );
+					_glow.color = 0x43aaff;
+				} else if (this.data.data.@sex == 'f') {
+					_labelText += " (f)";
+					_glow.color = 0xfa4e90;
+					this.setStyle("backgroundColor", 0xfa4e90);
+				} else {
+					this.setStyle("backgroundColor", 0xAFAFAF );
+					_glow.color = 0xAFAFAF;
+				} 
+				
+				_bgColor = this.getStyle("backgroundColor");
+				
+				
+				// Create a glow filter 
+				
+				_glow.alpha = 1;
+				_glow.blurX = 8;
+				_glow.blurY = 8;
+				_glow.quality = BitmapFilterQuality.MEDIUM;
+					
+			}
+			
+			/**
+			 * Set to true if this node is the current root node of the graph.
+			 */
+			public function set selected(selected:Boolean):void
+			{
+				_selected = selected
+				if(_selected) {
+					
+					
+					this.filters = [_glow];
+					this.setStyle("backgroundAlpha", 1);
+					
+					// If the visual graph is in ego network view, keep that
+					if(this.data.vgraph.egoNetworkView == true) {
+						
+						var shiftClickEvent:MouseEvent = new MouseEvent(MouseEvent.CLICK);
+						shiftClickEvent.shiftKey = true;
+						
+						egoNetwork(shiftClickEvent);
+					} else {
+						this.addEventListener(MouseEvent.CLICK, egoNetwork);
+					}
+					
+				} else {
+					this.filters = [];
+					this.setStyle("backgroundAlpha", 0.75);
+					
+					this.removeEventListener(MouseEvent.CLICK, egoNetwork);
+					this.removeEventListener(MouseEvent.CLICK, normalNetwork);	
+					this.data.vgraph.layouter.layoutPass();
+					
+				}	
+			}
+			
+			public function get selected():Boolean
+			{
+				
+				return _selected;
+			}
+			
+			/**
+			 * Highlight ego network for if the node is selected
+			 */
+			 private function egoNetwork(event:MouseEvent):void
+			 {
+			 	if (event.shiftKey) {
+			 		this.data.vgraph.egoNetworkView = true;
+			 	 
+			 		var egoEdges:XMLListCollection = new XMLListCollection();
+			 	
+		 			for each (var edge:Edge in this.data.node.inEdges) {
+		 				egoEdges.addItem(edge.data);
+			 		}
+				 	
+				 	this.data.vgraph.applyFilter(egoEdges);
+				 	
+				 	
+				 	this.removeEventListener(MouseEvent.CLICK,egoNetwork);
+				 	this.addEventListener(MouseEvent.CLICK, normalNetwork);
+				 }
+			 }
+			 
+			 /**
+			 * Restore normal view of network
+			 */
+			 private function normalNetwork(event:MouseEvent):void
+			 {
+			 	if (event.shiftKey) {
+				 	this.data.vgraph.egoNetworkView = false;
+				 	
+				 	this.removeEventListener(MouseEvent.CLICK, normalNetwork);
+				 	this.addEventListener(MouseEvent.CLICK, egoNetwork);
+				 }
+			 }
+			 
+			/**
+			 * Handle active or not states for the manual filter
+			 */
+			public function set active(active:Boolean):void
+			{
+				_active = active;
+				
+				if(_active){
+					
+					if( !contains(nodeText) ) {
+						addChild(nodeText);
+					}
+					
+					mouseEnabled = true;
+					this.alpha = 1;
+					//fadeIn.play([this]);
+					//nodeText.text = "active";
+				} else {
+					
+					if( contains(nodeText) ) {
+						removeChild(nodeText);
+					}
+					
+					selected = false;
+					mouseEnabled = false;
+					this.alpha = 0;
+					//fadeOut.play([this]);
+					//nodeText.text = "not active";
+				}
+			}
+			
+			public function get active():Boolean
+			{
+				return _active;
+			}
+			
+			/**
+			 * Handle highlight state (when moving over a edge label)
+			 */
+			public function set highlight(highlight:Boolean):void
+			{
+				_highlight = highlight;
+				
+				if(_highlight){
+					this.setStyle("backgroundColor",0xff0d00)
+				} else {
+					this.setStyle("backgroundColor", _bgColor)
+				}
+			}
+			
+			public function get highlight():Boolean
+			{
+				return _highlight;
+			}
+			
+		]]>
+	</mx:Script>
+    <mx:Text id="nodeText" text="{_labelText}" textAlign="center" fontSize="10" color="#ffffff" selectable="false"/>
+
+</mx:Canvas>

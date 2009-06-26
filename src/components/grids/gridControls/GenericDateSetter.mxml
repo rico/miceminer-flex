@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox height="22"
+	paddingRight="15" 
+	xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:helpers="classes.helpers.*" 
+	creationComplete="initComp()"
+	horizontalAlign="left"
+	verticalAlign="middle">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.core.Application;
+			
+			import classes.events.*;
+			import classes.helpers.DateHelpers;
+			import mx.events.ValidationResultEvent;
+			import components.popUps.DateRangerPopUp;
+			import mx.managers.PopUpManager;
+			
+			/**
+			 * Dispatched when the user changed the date in the <code>DateChooser</code>. If it's valid date range, the <code>valid</code>
+			 * parameter of the event is <code>true</code>, else <code>false</code>. 
+			 * 
+			 * @see classes.events.compBuiltEvent
+			 * 
+			 * @eventType classes.events.DateValidEvent.DATE_CHANGED
+			 */
+			[Event(name="dateValid", type="classes.events.DateValidEvent")]
+			
+			[Bindable]
+			[Embed(source="/assets/img/date_chooser.png")]
+            private var setDateRangeIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/clear.png")]
+			private var clearIcon:Class;
+			
+			private var _datePickerWin:DateRangerPopUp;
+			private var _dateRange:Array;
+			private var _dbDateRange:Array;
+			private var _dateRangeF:Array;
+			private var _origDateRange:Array;
+			private var _valid:Boolean;
+			
+			[Bindable]
+			private var _weekSelection:Boolean;
+			[Bindable]
+			private var _dbRangeStart:Date;
+			[Bindable]
+			private var _dbRangeEnd:Date;
+			
+			private function initComp():void
+			{
+				_valid = true;
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			DATE STUFF
+			----------------------------------------------------------------------------------------------- */
+			
+			/**
+			 * The date range to set in the <code>DateChooser</code>  
+			 */
+			public function get dateRange():Array
+			{
+				return _dateRange;
+			}
+			
+			/**
+			 * @private
+			 */
+			[Bindable] 
+			public function set dateRange(dateRange:Array):void
+			{
+				_dateRange = dateRange;
+            	_origDateRange = _dateRange;
+            	
+            	displayDateRange(_dateRange);	
+					
+			}
+			
+			/**
+			 * The date boundaries for the <code>DateChooser</code>
+			 */
+			public function get dbDateRange():Array
+			{
+				return _dbDateRange;
+			}
+			
+			/**
+			 * @private
+			 */
+			public function set dbDateRange(dbDateRange:Array):void
+			{
+				_dbDateRange = dbDateRange;
+				_dbRangeStart = dbDateRange[0];
+				_dbRangeEnd = dbDateRange[1];
+				
+				if(_dateRange == null) {
+					dateRange = [ _dbDateRange[1], _dbDateRange[1] ];
+				}
+				
+			}
+			
+			/**
+			 * If set to true, when the user clicks on a day in te calendar interface, the whole week ,the selected day is part of, 
+			 * will be selected. The text inputs will be disabled if in the week selection mode. 
+			 */
+			public function get weekSelection():Boolean
+			{
+				return _weekSelection;
+			}
+			
+			public function set weekSelection(enabled:Boolean):void
+			{
+				_weekSelection = enabled;
+			}
+			
+			/**
+			 * Display the date range in the textfields
+			 */
+			private function displayDateRange(dateRange:Array):void
+			{
+				_dateRangeF = DateHelpers.formatDateRange(dateRange);
+				var startRange:Array = DateHelpers.splitDate(_dateRangeF[0]);
+				var endRange:Array = DateHelpers.splitDate(_dateRangeF[1]);
+			
+				// start date
+				rstartd.text = startRange[2];
+				rstartm.text = startRange[1];
+				rstarty.text = startRange[0];
+				
+				// end date
+				rendd.text = endRange[2];
+				rendm.text = endRange[1];
+				rendy.text = endRange[0];
+				
+			}
+			
+			/**
+			 * Get date range from the text inputs
+			 */
+			private function validateRange(event:Event):void
+			{
+				
+				var rangeStart:Date = new Date(DateHelpers.joinDate([rstartm.text, rstartd.text, rstarty.text]));
+				var rangeEnd:Date = new Date(DateHelpers.joinDate([rendm.text, rendd.text, rendy.text]));
+				
+				// validate range
+				var rangeStartCheck:ValidationResultEvent = rangeStartV.validate();
+				var rangeEndCheck:ValidationResultEvent = rangeEndV.validate();
+				
+				// setting error tips
+				
+				// check start date
+				if(rangeStartCheck.results != null) {
+					rangeStartBox.errorString = rangeStartCheck.message;
+				} else {
+					rangeStartBox.errorString = '';
+				}
+				
+				// check end date
+				if(rangeEndCheck.results != null) {
+					rangeEndBox.errorString = rangeEndCheck.message;
+				} else {
+					rangeEndBox.errorString = '';
+				}
+		
+				// check for order
+				if(rangeStart.valueOf() > rangeEnd.valueOf())
+				{
+					rangeEndBox.errorString = 'The end date is before your start Date';
+					rangeStartBox.errorString = 'The start date is after your end Date';
+
+				}
+				
+				// valid or not ?
+				if(rangeEndBox.errorString == '' && rangeStartBox.errorString == '') {
+					//trace("valid date range");
+					dateChanged([rangeStart, rangeEnd]);
+				} else {
+					
+					dispatchEvent(new DateValidEvent(DateValidEvent.DATE_CHANGED,false, null));
+				}
+				
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			Handle reload Button states and properties
+			----------------------------------------------------------------------------------------------- */
+			/** 
+			 * Called when date has changed and is valid
+			 */
+			private function dateChanged(newDateRange:Array):void
+			{
+				if(newDateRange[0].time != _origDateRange[0].time || newDateRange[1].time != this._origDateRange[1].time ) {
+					
+					// set date range
+					_dateRange = newDateRange;
+					dispatchEvent( new DateValidEvent(DateValidEvent.DATE_CHANGED,true, _dateRange) );
+				} else {
+					dispatchEvent( new DateValidEvent(DateValidEvent.DATE_CHANGED,false, null) );
+				}
+			}
+			
+
+			/* -----------------------------------------------------------------------------------------------
+			DATE PICKER
+			----------------------------------------------------------------------------------------------- */
+			private function dateRangePick():void
+			{
+			
+				_datePickerWin = DateRangerPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, DateRangerPopUp, true));
+				_datePickerWin.compDateRange = _dateRange;
+				_datePickerWin.weekSelection = _weekSelection;
+				_datePickerWin["doneBut"].addEventListener("click", changeDateRange);
+				
+				stage.addEventListener(KeyboardEvent.KEY_DOWN, dateRangerKeyInput);
+				
+				parentApplication.alpha = 0.8;				
+				//PopUpManager.centerPopUp(_datePickerWin);
+			}
+			
+			// called when Date Picker is closed
+			private function changeDateRange(event:Event):void
+			{
+				var pickedDateRange:Array = _datePickerWin.compDateRange;
+				
+				PopUpManager.removePopUp(_datePickerWin);
+				parentApplication.alpha = 1.0;
+				
+				stage.removeEventListener(KeyboardEvent.KEY_DOWN,dateRangerKeyInput);
+				
+				dateChanged(pickedDateRange);
+				_dateRange = pickedDateRange;
+				displayDateRange(_dateRange);
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			Handle keyboard input
+			----------------------------------------------------------------------------------------------- */ 
+			
+			/**
+			 *  Reload data if enter key is pressed, reset on Escape key press
+			 */
+			 private function dateRangerKeyInput(event:KeyboardEvent):void
+			{
+    			 if (event.keyCode == Keyboard.ENTER) {
+    			 	changeDateRange(event);
+    			 } else if (event.keyCode == Keyboard.ESCAPE){
+    			 	_datePickerWin.compDateRange = _dateRange;
+    			 	changeDateRange(event);
+    			 }
+			} 	
+			
+			
+		]]>
+	</mx:Script>
+	
+	<!-- Validators -->
+	<helpers:DbDateValidator id="rangeStartV"
+		maxDate="{_dbRangeEnd}" minDate="{_dbRangeStart}"
+		daySource="{rstartd}" dayProperty="text" 
+		monthSource="{rstartm}" monthProperty="text" 
+		yearSource="{rstarty}" yearProperty="text" />
+      
+	<helpers:DbDateValidator id="rangeEndV"
+    	maxDate="{_dbRangeEnd}" minDate="{_dbRangeStart}" 	
+		daySource="{rendd}" dayProperty="text" 
+		monthSource="{rendm}" monthProperty="text" 
+		yearSource="{rendy}" yearProperty="text"/>
+	
+	<mx:Label text="Date range:" styleName="genLabelBright"/>
+		<mx:HBox id="rangeStartBox" horizontalGap="0" styleName="dateFormBack" height="22"
+			toolTip="{_weekSelection ? 'Please select the week from the calendar interface' : 'Enter the start date'}">
+			<mx:TextInput id="rstarty" maxChars="4" styleName="dateTextInput" height="15" width="30" 
+				change="validateRange(event)" focusIn="rstarty.setSelection(0,4)" enabled="{!_weekSelection}"/>
+			<mx:Text text="-"/>	
+			<mx:TextInput id="rstartm" maxChars="2" styleName="dateTextInput" height="15" width="18" 
+				change="validateRange(event)" focusIn="rstartm.setSelection(0,2)" enabled="{!_weekSelection}"/>
+			<mx:Text text="-" />
+			<mx:TextInput id="rstartd" maxChars="2" styleName="dateTextInput" height="15" width="18"
+				 change="validateRange(event)" focusIn="rstartd.setSelection(0,2)" enabled="{!_weekSelection}"/>
+			
+			
+		</mx:HBox>
+	<mx:Label text="to:" styleName="genLabelBright" />
+		<mx:HBox id="rangeEndBox" horizontalGap="0" styleName="dateFormBack" height="22"
+			toolTip="{_weekSelection ? 'Please select the week from the calendar interface' : 'Enter the end date'}">
+			<mx:TextInput id="rendy" maxChars="4" styleName="dateTextInput" height="15" width="30"
+				 change="validateRange(event)" focusIn="rendy.setSelection(0,4)" enabled="{!_weekSelection}"/>
+			<mx:Text text="-" />
+			<mx:TextInput id="rendm" maxChars="2" styleName="dateTextInput" height="15" width="18"
+				 change="validateRange(event)" focusIn="rendm.setSelection(0,2)" enabled="{!_weekSelection}"/>
+			<mx:Text text="-" />					 
+			<mx:TextInput id="rendd" maxChars="2" styleName="dateTextInput" height="15" width="18" 
+				change="validateRange(event)" focusIn="rendd.setSelection(0,2)" enabled="{!_weekSelection}"/>
+		</mx:HBox>
+	<mx:Button icon="{setDateRangeIcon}" toolTip="Set date range for the data with a calendar interface" styleName="headerButton" height="22"
+				click="dateRangePick()"/>
+ 
+</mx:HBox>

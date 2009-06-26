@@ -1,0 +1,462 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"  xmlns:class="classes.components.*" xmlns:grid="components.mainComponents.*"	
+	width="100%" height="100%" creationComplete="build()" 
+	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
+	backgroundAlpha="0.0"
+	verticalGap="0">
+	
+	<mx:Metadata>
+		[Event(name="uploadComplete", type="flash.events.DataEvent")]		
+		[Event(name="uploadProgress", type="flash.events.ProgressEvent")]
+		[Event(name="uploadCancel", type="flash.events.Event")]
+	</mx:Metadata>
+
+	<mx:Script>
+		<![CDATA[
+			import components.popUps.AlertPopUp;
+			import mx.collections.ArrayCollection;
+			import classes.components.Grid;
+			import classes.helpers.XmlHelper;
+			
+			/*
+				
+			Written by:
+			Dustin Andrew
+			dustin@flash-dev.com
+			www.flash-dev.com
+			
+			Rewritten by:
+			Rico Leuthold
+			rleuthold@access.ch
+			
+			FileUpload
+			
+			Panel component for uploading files.
+			(Icons from http://www.famfamfam.com)
+			
+			LAST UPDATED:
+			02/08/07
+			
+			*/
+			
+			import mx.core.Application;
+			import mx.controls.*;
+			import mx.managers.PopUpManager;
+			import flash.net.*;
+			import mx.collections.*;
+			import components.popUps.FileUpResPopUp;
+			import components.popUps.InfoPopUp;
+			import classes.GlobalVars;
+		
+			private var _strUploadUrl:String;
+			private var _refAddFiles:FileReferenceList;	
+			private var _refUploadFile:FileReference;
+			private var _arrUploadFiles:ArrayCollection;
+			private var _confXML:XML;
+			private var _numUpload:Number = 1;
+			private var _numUploads:Number;
+			private var _docTypeFilter:FileFilter;
+			private var _resultGrid:Grid;
+			private var _fileList:ArrayCollection;
+			private var _errorFileRefXMLList:XMLList;
+			
+			/**
+			 * The <code>id</code> which points to the id attribute of the <code>&lt;fileManager&gt;</code> which is a child node of the <code>&lt;fileManagers&gt;</code> node.  
+			 * 
+			 * <p>Based on the <code>fileManagerId</code> property the configuration 
+			 * from the xml configuration file is read.</p>
+			 * 
+			 * @example The part in the xml which serves as a configuration has the following format:
+			 * 
+			 * <listing version="3.0">
+			 * 	&lt;fileManager id="" label="" comp="FileUpload" script=""&gt;
+			 *		&lt;info /&gt;
+			 *		&lt;grid id="" initsort="" isBranch=""&gt;							
+			 *			&lt;col field="name" label="" width="" sort=""/&gt;							
+			 * 			...
+			 *		&lt;/grid&gt;
+			 *	&lt;/fileManager&gt;
+			 * </listing>
+			 * 
+			 * <ul>
+			 * <li>The <code>comp</code> attribute mut be set to <code>FileUpload</code> so that this component is used.</li>
+			 * <li>The <code>id</code> attributes must be uniqe.</li>
+			 * <li>The <code>script</code> attribute must point to a server side script handling the the data calls.<br/>
+			 * In our case this is the <code>/cgi/uploadlogs.pl</code> script.</li>
+			 * <li>The <code>info</code> section holds the help text which will be displayed in the <code>InfoPopUp</code> when the question 
+			 * mark in the upper right corner of the component is clicked.</li>
+			 * </ul>
+			 */
+			public var fileManagerId:String;
+
+			[Embed(source='/assets/img/exclamation.png')]
+    		[Bindable]
+    		private var imgAlert:Class;
+    		
+    		[Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+			
+			private var ConfigXML:XML;
+			// the feedback in xml format
+			private var _feedback:XMLList;
+			
+			// Initalize
+			private function build():void {
+				
+				_feedback = new XMLList();
+				getConfig();
+				
+				_fileList = new ArrayCollection();
+				// configure grid
+				_resultGrid = new Grid(_confXML.grid[0]);
+				_resultGrid.dbData = _fileList;
+				
+				_resultGrid.percentWidth = 100;
+				_resultGrid.percentHeight = 100;
+				_resultGrid.searchGrid.allowMultipleSelection = true;
+				
+				// add grid
+				content_box.addChild(_resultGrid);
+				
+				_arrUploadFiles = new ArrayCollection();				
+				_docTypeFilter = new FileFilter("text files", "*.txt");
+				enableUI();
+				uploadCheck();
+				
+				progBar.label = "click 'Add File(s)' to choose the files to upload";
+			}
+			
+			// get the component configuration from the xml
+			private function getConfig():void {
+				
+				var Globals:GlobalVars = GlobalVars.getInstance();
+	            	ConfigXML = Globals.ConfigXML;
+								
+				// get the domain and allow it to upload files
+				var domain:String = ConfigXML..domain;
+				
+				// get the configuration for the component
+				_confXML = XmlHelper.getFileManagerXML(fileManagerId);
+				
+				// get the script name
+				var script:String = _confXML.@script;
+				_strUploadUrl = domain.concat(script);
+				
+				 _confXML = XmlHelper.getFileManagerXML(fileManagerId);
+	
+				//showAlert("nupload URL: " + _strUploadUrl);
+			}
+			
+			// Called to add file(s) for upload
+			private function addFiles():void {
+				_refAddFiles = new FileReferenceList();
+				_refAddFiles.addEventListener(Event.SELECT, onSelectFile);
+				_refAddFiles.browse([_docTypeFilter]);
+			}
+			
+			// Called when a file is selected
+			private function onSelectFile(event:Event):void {
+				
+				_errorFileRefXMLList = new XMLList();
+				var arrFoundList:Array = new Array();
+				var fileCursor:IViewCursor  = _arrUploadFiles.createCursor();
+				var sortName:Sort = new Sort();
+				
+				sortName.fields = [new SortField("name")];
+				_arrUploadFiles.sort=sortName;
+				_arrUploadFiles.refresh();
+				
+				if (_refAddFiles.fileList.length >= 1) {
+					
+					for each (var fileRef:FileReference in _refAddFiles.fileList) {
+						
+						if(fileCursor.findFirst(fileRef)) {
+							//trace("found dup: " + fileRef.name);
+							arrFoundList.push(fileRef.name);
+							
+						} else {
+							
+							try {
+								_arrUploadFiles.addItem({
+								name:fileRef.name,
+								size:formatFileSize(fileRef.size),
+								file:fileRef
+								});
+							} catch(err:IOError) {
+							_errorFileRefXMLList += new XML("<info file=\"" + fileRef.name + "\"><status>0</status><file>" + fileRef.name + "</file><text>The file " + fileRef.name + " seems to be damaged or empty and can't be uploaded.</text></info>")
+							}
+										
+						}
+						
+					}
+					
+					_arrUploadFiles.sort = null;
+					_resultGrid.dbData = _arrUploadFiles;
+					_numUploads = _arrUploadFiles.length;
+				}	
+							
+				if (arrFoundList.length >= 1) {
+					
+					var alertWin:AlertPopUp = new AlertPopUp();
+					alertWin = AlertPopUp(PopUpManager.createPopUp(this, AlertPopUp, false, "popup"));
+					alertWin.alert_text = "The file(s): \n\n " + arrFoundList.join("\n ") + "\n\n...are already on the upload list. Please change the filename(s) or pick a different file.";;
+				}
+				
+				if(_errorFileRefXMLList.length() > 0) {
+					var feedbackPopup:FileUpResPopUp = new FileUpResPopUp();
+					feedbackPopup = FileUpResPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, FileUpResPopUp, true));
+					feedbackPopup.feedback = _errorFileRefXMLList;
+					feedbackPopup.title = "Error selecting Files";
+				}
+				
+				//trace(_arrUploadFiles.toString());
+				updateProgBar();
+				scrollFiles();
+				uploadCheck();
+			}
+			
+			// Called to format number to file size
+			private function formatFileSize(numSize:Number):String {
+				var strReturn:String;
+				numSize = Number(numSize / 1000);
+				strReturn = String(numSize.toFixed(1) + " KB");
+				if (numSize > 1000) {
+					numSize = numSize / 1000;
+					strReturn = String(numSize.toFixed(1) + " MB");
+					if (numSize > 1000) {
+						numSize = numSize / 1000;
+						strReturn = String(numSize.toFixed(1) + " GB");
+					}
+				}				
+				return strReturn;
+			}
+			
+			// Called to remove selected file(s) for upload
+			private function removeFiles(indexes:Array):void {
+				
+				for each (var index:int in indexes) {
+					_resultGrid.dbData.removeItemAt(index);
+					
+				}
+				
+				_errorFileRefXMLList = new XMLList();
+				
+				updateProgBar();
+				scrollFiles();
+				uploadCheck();
+			}
+			
+			// Called to check if there is at least one file to upload
+			private function uploadCheck():void {
+				if (_resultGrid.dbData.length == 0) {
+					disableUploadBtn()
+				} else {
+					enableUploadBtn();
+				}
+			}
+			
+			// Disable UI control
+			private function disableUI():void {
+				btnAdd.enabled = false;
+				btnRemove.enabled = false;
+				disableUploadBtn();
+				_resultGrid.searchGrid.enabled = false;
+	
+			}
+			
+			// Enable UI control
+			private function enableUI():void {
+				btnAdd.enabled = true;
+				btnRemove.enabled = true;
+				_resultGrid.searchGrid.enabled = true;
+			}
+			
+			// disable upload button 
+			private function disableUploadBtn():void
+			{
+				btnUpload.enabled = false;
+				btnUpload.alpha = 0.3;		
+				btnUpload.toolTip = "Add file(s) to enable this button";	
+			}
+			
+			// enable upload button 
+			private function enableUploadBtn():void
+			{
+				btnUpload.enabled = true;
+				btnUpload.alpha = 1;		
+				btnUpload.toolTip = "start uploading the files";	
+			}
+			
+			// Scroll listFiles to selected row
+			private function scrollFiles():void {
+				
+				if(_resultGrid.dbData.length > 0) {
+					var topIndex:int = _resultGrid.searchGrid.verticalScrollPosition;
+					_resultGrid.searchGrid.verticalScrollPosition = topIndex;
+					_resultGrid.searchGrid.validateNow();
+				}
+			}
+			
+			// Called to upload file based on current upload number
+			private function startUpload():void {
+				
+				if (_resultGrid.dbData.length > 0) {
+
+					disableUI();
+					var file:Object = _resultGrid.dbData.getItemAt(0);
+					//trace("file: " + file.file);
+					
+					var request:URLRequest = new URLRequest();
+					
+					var params:URLVariables = new URLVariables;
+					
+				    request.url = _strUploadUrl;
+				    request.method = URLRequestMethod.POST;
+				    request.data = params;
+				    
+				    _refUploadFile = new FileReference();
+				    _refUploadFile = file.file;
+				    _refUploadFile.addEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+				    _refUploadFile.addEventListener(IOErrorEvent.IO_ERROR, onUploadIoError);
+				  	_refUploadFile.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadSecurityError);
+				  	_refUploadFile.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadCompleteFile);
+				  	_refUploadFile.addEventListener(HTTPStatusEvent.HTTP_STATUS, onUploadHttpStaus);
+				    _refUploadFile.upload(request); 
+				    
+				} else {
+					onUploadCompleteData();
+				}
+				
+			}
+			
+			// Cancel and clear eventlisteners on last upload
+			private function clearUpload():void {
+				_refUploadFile.removeEventListener(ProgressEvent.PROGRESS, onUploadProgress);
+				_refUploadFile.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadCompleteData);
+				_refUploadFile.removeEventListener(IOErrorEvent.IO_ERROR, onUploadIoError);
+				_refUploadFile.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadSecurityError);
+				_refUploadFile.removeEventListener(HTTPStatusEvent.HTTP_STATUS, onUploadHttpStaus);
+				_refUploadFile.cancel();
+				_numUpload = 1;
+				_numUploads = 1;
+				btnUpload.enabled = false;
+				updateProgBar();
+				enableUI();
+			}
+			
+			// Get upload progress
+			private function onUploadProgress(event:ProgressEvent):void {
+				var numPerc:Number = Math.round((event.bytesLoaded / event.bytesTotal) * 100);
+				updateProgBar(numPerc);
+				var evt:ProgressEvent = new ProgressEvent("uploadProgress", false, false, event.bytesLoaded, event.bytesTotal);
+				dispatchEvent(evt);
+			}
+			
+			// Update progBar
+			private function updateProgBar(numPerc:Number = 0):void {
+				//trace("NumUp: " + _numUpload);
+				var strLabel:String = _numUpload + "/" + _numUploads;
+				strLabel = (_numUpload <= _numUploads && numPerc > 0 && numPerc < 100) ? numPerc + "% - " + strLabel : strLabel;
+				strLabel = (_numUpload == _numUploads && numPerc == 100) ? "Upload Complete - " + strLabel : strLabel;
+				strLabel = (_numUploads == 0) ? "" : strLabel;
+				progBar.label = strLabel;
+				progBar.setProgress(numPerc, 100);
+				progBar.validateNow();
+			}
+			
+	
+			
+			// Called on file upload complete
+			private function onUploadCompleteFile (event:DataEvent):void {
+
+				var scriptFeedback:XML = new XML(event.data);
+				scriptFeedback.@file = event.currentTarget.name;
+				//showAlert(scriptFeedback.toString());
+				if(scriptFeedback.contains(<error></error>))
+				{
+					showAlert(scriptFeedback.error);	
+				} else {
+					_feedback += scriptFeedback;
+					removeFiles([0]);
+					
+					//trace(_feedback.toString());
+					_numUpload++;
+					startUpload();			
+				}
+			}
+			
+			// Called when all files are uploaded
+			private function onUploadCompleteData():void {
+				
+				_resultGrid.dbData.removeAll();
+				clearUpload();
+				//trace(_feedback.toXMLString());
+				var feedbackPopup:FileUpResPopUp = new FileUpResPopUp();
+				feedbackPopup = FileUpResPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, FileUpResPopUp, true));
+				feedbackPopup.feedback = _feedback;
+				_feedback = new XMLList(); // clear feedback xml
+				progBar.label = "click 'Add File(s)' to choose the files to upload";
+			}
+			
+			// Called when the popUp info Window is closed
+			private function popUpClosed(event:Event):void {
+				enableUI();
+				this.alpha = 1;
+			}
+			
+			/*
+				ERRORS
+			*/	
+
+			// Called on upload io error
+			private function onUploadIoError(event:IOErrorEvent):void {
+				showAlert("an upload IO error occured");
+			}
+			
+			// Called on upload http error
+			private function onUploadHttpStaus(event:HTTPStatusEvent):void {
+				showAlert("an upload HTTP error occured");
+			}
+			
+			// Called on upload security error
+			private function onUploadSecurityError(event:SecurityErrorEvent):void {
+				showAlert("an upload SECURITY error occured");
+			}
+			
+			// called when an error occured
+			private function showAlert(str:String):void
+			{
+				//clearUpload();
+				Alert.show(str,"",0x4,null,null,imgAlert);
+				//var errorPopUp:popUp = popUp(PopUpManager.createPopUp(this.parent, popUp, false));
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, false, "popup"));
+				infoWin.infoText = _confXML.info;
+				
+			}
+						
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%" styleName="controlHeader" id="header" verticalAlign="middle">
+		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader">
+				<mx:Button id="btnAdd" toolTip="Add File(s)" label="Add File(s)" click="addFiles()" icon="@Embed('/assets/img/add.png')" styleName="headerButton"/>
+				<mx:Button id="btnRemove" toolTip="Remove File(s)" label="Remove File(s)" click="removeFiles(_resultGrid.searchGrid.selectedIndices)" icon="@Embed('/assets/img/delete.png')" styleName="headerButton"/>
+				<mx:ProgressBar id="progBar" mode="manual" labelPlacement="center" width="100%" styleName="uploadDataPB" />
+				<mx:Button label="Upload File(s)" toolTip="Upload File(s)" id="btnUpload" click="startUpload()" icon="@Embed('/assets/img/fileUpIcon.png')" styleName="reloadButton"/>
+	 		 	<mx:Image source="{helpIcon}" visible="true"
+	 		 		id="showInfoBut" toolTip="show Info"  click="showInfo()"/>
+		</mx:HBox>
+		<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" width="100%" />
+	</mx:VBox>
+	<mx:HBox id="content_box" width="100%" height="100%" paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0" 
+		borderColor="#333333" borderStyle="solid" borderThickness="1" borderSides="left, right, bottom"/>
+
+</mx:VBox>	

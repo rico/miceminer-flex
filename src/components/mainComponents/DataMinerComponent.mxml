@@ -1,0 +1,662 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:navigators="components.navigators.*"
+	xmlns:gridCtrl="components.gridControls.*"
+	xmlns:classComps ="classes.components.*" 
+	bottom="0" top="0" left="0" right="0"
+	verticalGap="0"
+	paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5"
+	fontFamily="MyriadProBold" 
+	creationComplete="initComp()" xmlns:gridControls="components.grids.gridControls.*">
+	
+	<mx:Script>
+		<![CDATA[
+			import components.popUps.InfoPopUp;
+			import classes.rpc.GetItems;
+			import classes.datastructures.Item;
+			import classes.rpc.ExportData;
+			import mx.core.Application;
+			import mx.controls.HRule;
+			import classes.components.DataFilterBox;
+			import mx.containers.dividedBoxClasses.BoxDivider;
+			import mx.events.DividerEvent;
+			import classes.helpers.DateHelpers;
+			import mx.rpc.events.FaultEvent;
+			import mx.controls.Alert;
+			import mx.controls.Button;
+			import classes.components.Grid;
+			import mx.events.IndexChangedEvent;
+			import mx.managers.PopUpManagerChildList;
+			import classes.events.*;
+			import classes.GlobalVars;
+			import mx.managers.PopUpManager;
+			import components.popUps.LoadPopUp;
+			import mx.utils.ObjectProxy;
+			import mx.events.ItemClickEvent;
+			import classes.rpc.GetData;
+	        import classes.helpers.XmlHelper;
+			import mx.binding.utils.*;
+			import components.grids.gridControls.DateSetter;
+			
+			public var componentXML:XML;
+			
+			private var _activeGrid:Grid;
+			private var _loadViewActive:Boolean = false;
+			private var _dataAvailable:Boolean = false;
+			private var _isLoadAll:Boolean = false;
+			private var _labelSetter:ChangeWatcher;
+			private var _dateRange:Array;
+			private var _dbDateRange:Array;
+			private var _itemGridsXML:XMLList;
+			private var _dataGridsXML:XMLList;
+			private var _item:Item;
+			private var _loadWin:LoadPopUp = new LoadPopUp();
+			private var _compsToBuild:int = 0;
+			private var Globals:GlobalVars;
+			private var _cachedView:String;
+			private var _getDataItemsGridsInDateRange:GetItems;
+			private var _getDataDataGrids:GetData;
+			
+			[Bindable]
+			private var _divx:Number;
+			
+			[Bindable]
+			private var _divider:BoxDivider;
+			
+            [Bindable]
+			[Embed(source="/assets/img/nav/split_view.png")]
+            private var splitViewIcon:Class;
+			
+			[Bindable]
+			[Embed(source="/assets/img/nav/items_view.png")]
+            private var itemsViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/nav/data_view.png")]
+            private var dataViewIcon:Class;
+
+            [Bindable]
+			[Embed(source="/assets/img/exclamation.png")]
+            private var alertIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+			  			
+			/* -----------------------------------------------------------------------------------------------
+			initialize component
+			----------------------------------------------------------------------------------------------- */
+			private function initComp():void
+			{
+				
+				Globals = GlobalVars.getInstance();
+				
+				// Setting dat ranges (this and child components)
+				// The date range is the last day of the database dat range when crating the component
+				
+				_dbDateRange = DateHelpers.getDbRange();
+				
+				if(DateHelpers.getDateRange()) {
+					_dateRange = DateHelpers.getDateRange();
+				} else {
+					_dateRange = [ _dbDateRange[1], _dbDateRange[1] ];	
+				}
+            		
+            	
+            	dateSetterBox.dbDateRange = _dbDateRange;
+            	dateSetterBox.dateRange = _dateRange;
+				
+				dataAvailable = false;
+            	setLabel();
+            					
+				this.addEventListener(LoadDataEvent.LOAD_ALL, loadAll);
+				this.addEventListener(LoadDataEvent.LOAD_DATA, loadData);
+				this.addEventListener(LoadDataEvent.LOAD_DATA_FOR_COMP, loadDataForComp);
+				this.addEventListener(LoadItemsEvent.LOAD_ITEMS, loadItems);
+				//this.addEventListener(LoadItemsEvent.LOAD_ITEMS"showItems", loadItems);
+				this.addEventListener(ChangeHeaderEvent.CHANGE_HEADER,changeHeader);
+				this.addEventListener(DateValidEvent.DATE_CHANGED,dateValid);
+				
+				this.addEventListener(RequestViewEvent.DATA_VIEW, viewRequested);
+				this.addEventListener(RequestViewEvent.ITEMS_VIEW, viewRequested);
+				this.addEventListener(RequestViewEvent.RESTORE_VIEW, viewRequested);
+				this.addEventListener(RequestViewEvent.DATA_CLOSED, viewRequested);
+				
+				
+				// getting xml for the the grids           	
+            	_itemGridsXML = XmlHelper.getItemsGridsInDateRangeXML();
+            	
+            	if(Globals.itemsDataInDateRange) {
+            		this.addEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
+					itemsComp.build(_itemGridsXML);
+					itemsComp.attachSearchComps(Globals.itemsDataInDateRange);
+					
+				} else {
+					// Loading items data
+					
+            		loadItems(new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS));
+				}
+				
+				// set View
+				_divx = (gridsCompsBox.width) / 2
+				_divider = gridsCompsBox.getDividerAt(0);
+				itemsComp.percentHeight = 100;
+				dataComp.percentHeight = 100;
+				currentState = "itemsView";
+				
+				if(componentXML && componentXML.hasOwnProperty('info')) {
+					showInfoBut.enabled = true;
+					showInfoBut.visible = true;
+				}
+				
+			}
+			/* -----------------------------------------------------------------------------------------------
+			CENTRAL EVENT HANDLING
+			----------------------------------------------------------------------------------------------- */
+			
+			
+			/**
+			 * Event handler when a timout occured or the data load is canceled
+			 */
+			private function cancelLoad(event:Event):void
+			{
+				
+				removeLoadView();
+				
+				if( Globs.broker.hasEventListener(EventsGlobals.DATA_LOAD_COMPLETE)  )
+				{
+					_getDataDataGrids.cancelGetData();
+					Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_COMPLETE,buildDataComp);
+				}
+				
+				if( Globs.broker.hasEventListener(EventsGlobals.ITEMS_IN_DATE_RANGE_LOAD_COMPLETE) )
+				{
+					_getDataItemsGridsInDateRange.cancelGetData();
+					Globs.broker.removeEventListener(EventsGlobals.ITEMS_IN_DATE_RANGE_LOAD_COMPLETE,buildItemsComp);
+				}
+				
+				if( currentState == 'splitView' && !dataComp.tabChilds) {
+					viewRequested( new RequestViewEvent(RequestViewEvent.ITEMS_VIEW) );
+				}
+				
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				_compsToBuild = 0;
+				
+				event.stopImmediatePropagation();
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			called when the date has changed in the header
+			----------------------------------------------------------------------------------------------- */
+			private function dateValid(event:DateValidEvent):void
+			{
+				if(event.valid) {
+					gridsCompsBox.enabled = false;
+					gridsCompsBox.alpha = 0.5;
+					dataFilterBox.visible = false;
+					_dateRange = event.dateRange;
+					
+				} else {
+					gridsCompsBox.enabled = true;
+					dataFilterBox.visible = true;
+					gridsCompsBox.alpha = 1;
+				}
+				
+				event.stopPropagation();
+				
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			Items comp event handling
+			----------------------------------------------------------------------------------------------- */
+			private function loadItems(event:LoadItemsEvent):void
+			{
+				_getDataItemsGridsInDateRange = new GetItems(_dateRange);
+				Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
+				Globs.broker.addEventListener(EventsGlobals.ITEMS_IN_DATE_RANGE_LOAD_COMPLETE,buildItemsComp);
+				Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				
+				if( !_isLoadAll ) {
+					loadView("loading data for items", false);
+				}
+				_compsToBuild++;
+
+				event.stopPropagation();
+				
+			}
+			
+			private function buildItemsComp(event:ObjectDataEvent):void
+			{
+				Globs.broker.removeEventListener(EventsGlobals.ITEMS_IN_DATE_RANGE_LOAD_COMPLETE,buildItemsComp);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
+				
+				var dbData:Array = event.values[0];
+				itemsComp.build(_itemGridsXML);	
+	        	itemsComp.attachSearchComps(dbData);
+	      		
+			}
+			/* ----------------------------------------------------------------------------------------------- 
+			Data comp event handling
+			----------------------------------------------------------------------------------------------- */
+			private function loadData(event:LoadDataEvent):void
+			{
+				
+				_item = event.item;
+				
+				_dataGridsXML = XmlHelper.getDataGridsXML(event.item.gridId);
+				
+				if( event.item.toExcel == false || _isLoadAll ) {
+					// we need to show the data comp, otherwise we can't dispatch events from it
+					if(currentState == "itemsView" ){
+						
+						setView("splitView");
+						
+					}
+					
+					if(!_isLoadAll) {
+						_activeGrid = itemsComp.navigatorsComp.selectedChild as Grid;
+						loadView("loading data for " + _activeGrid.header + " " + _item.id + "...", true);
+					}
+					_compsToBuild++;
+				
+					//dataComp.build(_dataGridsXML, event.dataInfo.id);
+					
+					Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_COMPLETE,buildDataComp);
+					Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+					Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
+									
+					_getDataDataGrids = new GetData(_item, _dateRange);
+					
+				} else { // export the data directly to excel
+					new ExportData(_item, _dateRange);
+				}
+				
+				
+				
+				event.stopPropagation();
+
+			}
+			
+			/**
+			 * Load data for a child component. The child component needs a <code>EventsGlobals.DATA_LOAD_COMPLETE</code>
+			 * event listener to get notified when the data is ready.
+			 * 
+			 */
+			private function loadDataForComp(event:LoadDataEvent):void
+			{
+				
+				new GetData(event.item, _dateRange, true);
+				event.stopPropagation();
+				
+			}
+			
+			private function buildDataComp(event:ObjectDataEvent):void
+			{
+				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_COMPLETE,buildDataComp);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
+				
+				_item = event.values[0];
+				var dbData:Array = event.values[1];
+				
+				Globals.dataData = dbData;
+				
+				dataComp.build(_dataGridsXML, _item);
+				dataComp.attachSearchComps(dbData);
+				
+				
+				dataAvailable = true;
+			}
+			
+			
+			/* ----------------------------------------------------------------------------------------------- 
+			Load items and data data for changed date range
+			----------------------------------------------------------------------------------------------- */
+			private function loadAll(event:LoadDataEvent):void
+			{
+				
+				gridsCompsBox.enabled = true;
+				dataFilterBox.visible = true;
+				gridsCompsBox.alpha = 1;
+				
+				// setting the date range cause we reloading all data
+				//this.dateRange = header.dateSet.dateRange;
+				//Globals.dateRange = this.dateRange;
+				
+				setLabel();
+            	Globals.currentItem = event.item;
+            	
+				if(dataAvailable) {
+					_isLoadAll = true;
+					loadView("loading data for new date range", true);
+					//_item.toExcel = false;
+					currentState = "splitView";
+					loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
+					loadData( new LoadDataEvent(LoadDataEvent.LOAD_DATA, _item) );
+					
+				} else {
+					_isLoadAll = false;
+					loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
+					//_compsToBuild++;
+				}
+			} 	
+			
+			/**
+			 * Called, when something in the rpc went wrong
+			 */
+			private function showError(fault:ObjectDataEvent):void
+			{
+				_compsToBuild = 0;
+				var faultData:FaultEvent = fault.values[0];
+				removeLoadView()
+				this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, this.searchCompTabBuilt);
+				
+				Alert.show(faultData.fault.faultString + "\n Please choose other data parameters", faultData.fault.faultCode.toString(),4,null,null,alertIcon);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
+				setView("itemsView");
+			}
+			 
+			/**
+			 * Set header to reflect selected tab
+			 * The <emp>changeHeader</emp> <code>event</code> is dispatched by a <code>searchGrid<code> or a <code>searchChart</code>
+			 * component.   
+			 */
+			private function changeHeader(event:ChangeHeaderEvent):void
+			{
+				_activeGrid = event.grid;
+				event.stopImmediatePropagation();
+				
+				if(_activeGrid.parentGridsNavigator.id == "itemsComp") {
+					if (_dataAvailable) dataComp.hasFocus = false;
+					itemsComp.hasFocus = true;
+				} else if(_activeGrid.parentGridsNavigator.id== "dataComp") {
+					itemsComp.hasFocus = false;
+					dataComp.hasFocus = true;
+				} else {
+					trace("[dataMiner]: changeHeader cannot set defaults for " + _activeGrid.parentGridsNavigator.id);
+				}
+                    
+				// set filter
+				dataFilterBox.activeComp = _activeGrid;
+				
+				//_activeGrid.focus();
+				
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			STATE HANDLING
+			----------------------------------------------------------------------------------------------- */
+			/**
+			 *  initiate load view with the event we get the data needed to load the data
+			 */
+			private function loadView(labelValue:String = null, cancelable:Boolean = false):void
+			{
+				if(_loadViewActive) {
+					_loadWin.loadLabel = labelValue;	
+				} else {
+					this.addEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
+					
+					_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp,true));
+					_loadWin.addEventListener("cancelLoad", cancelLoad);
+					_loadWin.loadLabel = labelValue;
+					
+					_loadWin.cancelable = cancelable;
+					
+					_loadViewActive = true;
+				}
+			}
+			
+			/**
+			 * remove the load popUp
+			 */
+			private function removeLoadView():void
+			{
+				if(_loadViewActive)
+				{
+					_loadWin.closeThis();
+					this.removeEventListener("cancelLoad", cancelLoad);
+					_loadViewActive = false;
+				}
+			}
+			
+			
+			// called when the grids finished and attached to the gridsComp
+			private function searchCompTabBuilt(event:CompBuiltEvent):void
+			{
+				if(_compsToBuild <= 1) {
+				 	
+					var selGridsComp:GridsNavigator = event.component as GridsNavigator;
+					selGridsComp.changeTabFocus();
+					
+					_compsToBuild = 0;
+					
+					removeLoadView();
+					
+					this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
+					
+					if(_isLoadAll) {
+						_isLoadAll = false;
+						dataAvailable ? setView("splitView") : setView("itemsView");
+					}
+					
+					// select _item in the itemsGrid
+					if(_item) {
+						itemsComp.selectedItem = _item;
+					}
+							
+				} else {
+					_compsToBuild--;
+				}
+				
+				event.stopPropagation();
+
+			}
+		
+			
+			/**
+			 * Call to set a view or state based on the passed string
+			 * 
+			 */ 
+			private function setView(view:String = "dataView"):void
+			{
+				
+				currentState = view;
+				
+				switch(view)
+				{
+					case "itemsView":
+						changeViewButtons.selectedIndex = 0;
+					break;
+					case "splitView":
+						changeViewButtons.selectedIndex = 1;
+					break;
+					case "dataView":
+						changeViewButtons.selectedIndex = 2;
+					break;
+				}
+			}
+			
+			/**
+			 * @private
+			 * Set the desired view or switch back to the restored view
+			 */
+			private function viewRequested(event:RequestViewEvent):void
+			{
+				switch(event.type) {
+					case RequestViewEvent.DATA_VIEW:
+						_cachedView = currentState;
+						setView("dataView");	
+					break;
+					case RequestViewEvent.RESTORE_VIEW:
+						setView(_cachedView);
+					break;
+					case RequestViewEvent.ITEMS_VIEW:
+						setView("itemsView");
+						itemsComp.enableJumpBut = false;
+						dataAvailable = false;
+					break;
+					case RequestViewEvent.DATA_CLOSED:
+						setView("itemsView");
+						itemsComp.enableJumpBut = false;
+						dataAvailable = false;
+						changeHeader( new ChangeHeaderEvent( itemsComp.navigatorsComp.selectedChild as Grid ) );
+						
+					break;
+					default:
+						setView(_cachedView);
+					break;
+				}
+				
+				event.stopImmediatePropagation();
+				
+			}
+			
+			// handling button bar clicks
+			private function buttonBarClick(event:ItemClickEvent) : void
+			{
+				switch (event.index) 
+				{
+					case 0:
+						//itemsView();
+						currentState="itemsView";
+						itemsComp.changeTabFocus();
+	    			break;
+	    			case 1:
+						currentState="splitView";
+	    			break;	
+					case 2:
+						//dataView();
+						currentState="dataView";
+						dataComp.changeTabFocus();
+	    			break;
+				}
+			}
+
+			
+			private function setLabel():void 
+			{
+				var dateRangeF:Array = DateHelpers.formatDate(_dateRange)
+				
+				if(dateRangeF[0]  == dateRangeF[1]) {
+					this.label = dateRangeF[0];
+				} else {
+					this.label = dateRangeF[0] + " to " + dateRangeF[1];
+				}
+				
+				this.invalidateDisplayList();   
+			}
+			
+			// get divider coordinate, to have a temporary value of its position
+			private function getDivCoord():void
+			{
+				_divx = _divider.contentMouseX;
+			}
+			
+			/**
+			 * The actual data range for this component.
+			 */
+			public function get dateRange():Array
+			{
+				return _dateRange;
+			}
+			
+			/**
+			 * If data is available we can switch views through the buttpn bar at the bottom
+			 */
+			private function set dataAvailable(avail:Boolean):void
+			{
+				if(avail) {
+					changeViewButtons.enabled = true;
+					changeViewButtons.alpha = 1;
+					
+				} else {
+					changeViewButtons.enabled = false;
+					changeViewButtons.alpha = 0.3;
+					dataComp.reset();
+				}
+				
+				_dataAvailable = avail;
+			}
+			
+			private function get dataAvailable():Boolean
+			{
+				return _dataAvailable;
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = componentXML.info;
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:states>
+		<mx:State name="itemsView">
+			<mx:RemoveChild target="{dataComp}" />
+			<!-- <mx:SetProperty target="{dataComp}" name="width" value="0%" /> -->
+			<mx:SetProperty target="{itemsComp}" name="width" value="100%" />
+		</mx:State>
+		
+		<mx:State name="splitView">
+			<mx:SetProperty target="{dataComp}" name="width" value="50%" />
+			<mx:SetProperty target="{itemsComp}" name="width" value="50%" />
+		</mx:State>
+		
+		<mx:State name="dataView">
+			<mx:RemoveChild target="{itemsComp}" />
+			<!-- <mx:SetProperty target="{itemsComp}" name="width" value="0%" /> -->
+			<mx:SetProperty target="{dataComp}" name="width" value="100%" />
+		</mx:State>
+	</mx:states>
+
+	<!-- layout -->
+	<mx:VBox id="contentBox" width="100%" height="100%" verticalGap="0" verticalAlign="middle" horizontalAlign="center">
+		<mx:VBox id="headerCompsBox" width="100%" horizontalAlign="left" verticalGap="0"
+			paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0">
+			<mx:HBox id="headerCompsBoxTop" backgroundAlpha="0" width="100%"
+				paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="5">
+				<gridControls:DateSetter id="dateSetterBox" styleName="controlPartHeader" height="28"/>
+				<mx:Spacer width="100%" />
+				<mx:Image source="{helpIcon}"
+	 		 		id="showInfoBut" toolTip="show info &amp; help for this component"
+	 		 		enabled="false"
+	 		 		visible="false" 
+	 		 		buttonMode="true" useHandCursor="true" mouseChildren="false" click="showInfo()"/>
+			</mx:HBox>
+			<mx:HRule strokeWidth="1" strokeColor="#CCCCCC" width="100%" />
+			<classComps:DataFilterBox id="dataFilterBox" styleName="controlPartHeader" height="50%" comboBoxStyleName="searchCombo" textInputStyleName="clearTextInput" />
+		</mx:VBox>
+		
+		<mx:HDividedBox id="gridsCompsBox" dividerRelease="getDivCoord()" styleName="gridsComp"
+			width="100%" height="100%" verticalAlign="middle" 
+			horizontalAlign="center" verticalScrollPolicy="off" 
+			horizontalScrollPolicy="off">
+			
+			<navigators:GridsNavigator id="itemsComp" name="itemsnavigators" isDataComp="false" verticalScrollPolicy="off" horizontalScrollPolicy="off"
+				left="0" right="0" top="0" bottom="0" closable="false" enableGetData="true"/>
+			<navigators:GridsNavigator id="dataComp" name="datanavigators" isDataComp="true" enableGetData="false" verticalScrollPolicy="off" horizontalScrollPolicy="off"
+				left="0" right="0" top="0" bottom="0" closable="true" />
+				
+		</mx:HDividedBox>
+		
+		<mx:HBox id="footer_box" width="100%" paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="0">
+			<mx:ToggleButtonBar id="changeViewButtons" buttonHeight="20" 
+				itemClick="buttonBarClick(event)"
+				styleName="CompButtonBar">
+				<mx:Object id="itemsViewBut" icon="{itemsViewIcon}" toolTip="Expand Items View" />
+				<mx:Object id="splitViewBut" icon="{splitViewIcon}" toolTip="Splitted View" />
+				<mx:Object id="dataViewBut" icon="{dataViewIcon}" toolTip="Expand Data View"/>
+			</mx:ToggleButtonBar>
+			<mx:Spacer width="100%" />
+		</mx:HBox>
+		
+	</mx:VBox>
+</mx:VBox>

@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * The MIT License
+ *
+ * Copyright (c) 2008
+ * United Nations Office at Geneva
+ * Center for Advanced Visual Analytics
+ * http://cava.unog.ch
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+-->
+
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" verticalAlign="middle" verticalGap="3" horizontalAlign="middle">
+	<mx:Style>
+	 .centerButton {
+			upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+			cornerRadii: 3, 3, 3, 3;
+			borderColors: #CCCCCC, #CCCCCC;
+		 	overBorderColors: #CCCCCC, #CCCCCC;
+		 	selectedBorderColors: #CCCCCC, #CCCCCC;
+		 	borderThickness: 1;
+		 	borderAlpha: 1;
+		 	fillColors: #878787, #444444;
+		 	fillAlphas: 0.1, 0.6;
+		 	fillColorRatios: 0, 100;
+		 	overFillColors: #878787, #666666;
+		 	overFillAlphas: 0.5, 0.5;
+		 	overFillColorRatios: 0, 141;
+		 	selectedFillColors: #FFFFFF, #FFFFFF;
+		 	selectedFillAlphas: 0.5, 0.5;
+		 	selectedFillColorRatios: 0, 255;
+		 	highlightAlphas: 0, 0;
+		 	color: #FFFFFF;
+		 	textRollOverColor: #FFFFFF;
+		 	font-weight:normal;
+		 	font-size: 11;
+		 	fontFamily: 'MyriadPro';
+	        }
+	</mx:Style>
+
+	<mx:Button id="centerButton" styleName="centerButton" width="100%"
+		click="{vgraph.scroll(-vgraph.origin.x, -vgraph.origin.y); vgraph.refresh() }"  
+		label="recenter graph" 
+		icon="{centerIcon}" 
+		toolTip="re-center the graph in the view area"
+		/>
+		
+	<mx:Button id="refreshButton" styleName="centerButton" width="100%"
+		click="{ vgraph.fullVGraphRefresh(); dispatchEvent(new Event('refreshGraph',true)) }"  
+		label="refresh graph" 
+		icon="{refreshIcon}" 
+		toolTip="refresh the graph"
+		/>	
+		
+	<mx:Script>	
+		<![CDATA[
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+			
+			/**
+			 * A bubbling event, dispatched when the user clicks the "refresh graph" button.
+			 * 
+			 * @eventType flash.events.event
+			 */
+			[Event(name="refreshGraph", type="flash.events.event")]
+			
+			
+			/**
+			 * The <code>vgraph</code> the control is acts on.
+			 */
+			public var vgraph:VisualGraph;
+			
+			[Bindable]
+			[Embed(source="/assets/img/center.png")]
+            private var centerIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var refreshIcon:Class;
+            			
+		]]>
+	</mx:Script>
+</mx:VBox>

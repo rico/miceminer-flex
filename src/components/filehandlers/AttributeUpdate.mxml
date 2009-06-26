@@ -1,0 +1,608 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"  xmlns:class="classes.components.*" xmlns:grid="components.mainComponents.*"	
+	width="100%" height="100%" creationComplete="build()" 
+	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
+	backgroundAlpha="0.0"
+	verticalGap="0">
+	
+	<!-- <mx:Metadata>
+		[Event(name="uploadCompleteData", type="flash.events.DataEvent")]		
+		[Event(name="uploadProgress", type="flash.events.ProgressEvent")]
+		[Event(name="uploadCancel", type="flash.events.Event")]
+	</mx:Metadata> -->
+
+	<mx:Script>
+		<![CDATA[
+			import classes.helpers.DateHelpers;
+			import classes.helpers.CgiRequest;
+			import components.popUps.LoadWithProgressPopUp;
+			import classes.rpc.GetDataByMethod;
+			import components.popUps.ConfirmPopUp;
+			import components.renderers.DeleteItemRenderer;
+			import mx.events.FlexEvent;
+
+			import components.popUps.AttributeUpdateResPopUp;
+			import classes.renderer.UpdatedValuesRenderer;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import classes.helpers.ExcelExport;
+			import components.popUps.LoadPopUp;
+			import classes.events.ObjectDataEvent;
+			import classes.events.Globs;
+			import classes.events.EventsGlobals;
+			import classes.rpc.GenericDataGetter;
+			import components.popUps.AlertPopUp;
+			import mx.collections.ArrayCollection;
+			import classes.components.Grid;
+			import classes.helpers.XmlHelper;
+			import mx.core.Application;
+			import mx.controls.*;
+			import mx.managers.PopUpManager;
+			import flash.net.*;
+			import mx.collections.*;
+			import components.popUps.FileUpResPopUp;
+			import components.popUps.InfoPopUp;
+			import classes.GlobalVars;
+			
+			/**
+			 * The <code>id</code> which points to the id attribute of the <code>&lt;fileManager&gt;</code> which is a child node of the <code>&lt;fileManagers&gt;</code> node.  
+			 * 
+			 * <p>Based on the <code>fileManagerId</code> property the configuration 
+			 * from the xml configuration file is read.</p>
+			 * 
+			 * @example The part in the xml which serves as a configuration has the following format:
+			 * 
+			 * <listing version="3.0">
+			 * 	&lt;fileManager id="" label="" comp="AttributeUpdate" script=""&gt;
+			 *		&lt;info /&gt;
+			 *		&lt;grid id="" initsort="" isBranch=""&gt;							
+			 *			&lt;col field="name" label="" width="" sort=""/&gt;							
+			 * 			...
+			 *		&lt;/grid&gt;
+			 *	&lt;/fileManager&gt;
+			 * </listing>
+			 * 
+			 * <ul>
+			 * <li>The <code>comp</code> attribute mut be set to <code>AttributeUpdate</code> so that this component is used.</li>
+			 * <li>The <code>id</code> attributes must be uniqe.</li>
+			 * <li>The <code>script</code> attribute must point to a server side script handling the the data calls.<br/>
+			 * In our case this is either the <code>/cgi/rfidupdate.pl</code> or the <code>/cgi/boxupdate.pl</code> script.</li>
+			 * <li>The <code>info</code> section holds the help text which will be displayed in the <code>InfoPopUp</code> when the question 
+			 * mark in the upper right corner of the component is clicked.</li>
+			 * </ul>
+			 */
+			public var fileManagerId:String;
+		
+			private var _strUploadUrl:String;	
+			private var _refUploadFile:FileReference;
+			private var _confXML:XML;
+			private var _docTypeFilter:FileFilter;
+			private var _resultGrid:Grid;
+			private var _loadWin:LoadPopUp;
+			private var _progressLoadWin:LoadWithProgressPopUp;
+			private var _table:String;
+			private var _fieldList:String;
+			private var _originalData:ArrayCollection;
+			private var _originalDataHash:Array;
+			private var _updatedData:ArrayCollection;
+			private var _deleteMethod:String;
+			private var _updateDayCountsScript:String;
+			private var _idToDelete:String;
+			private var _daysToUpdate:Array;
+			private var ConfigXML:XML;
+			private var _feedback:XMLList;
+			
+			
+			[Bindable]
+			private var _updated:Boolean;
+
+			[Embed(source='/assets/img/exclamation.png')]
+    		[Bindable]
+    		private var imgAlert:Class;
+    		
+    		[Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+            
+            
+			
+			// Initalize
+			private function build():void {
+				
+				_updated = false;
+				_originalData = new ArrayCollection();
+				_updatedData = new ArrayCollection();
+				_loadWin = new LoadPopUp();
+				disableUploadBtn();
+				getConfig();
+
+				// configure grid
+				_resultGrid = new Grid(_confXML.grid[0]);
+				_resultGrid.itemRenderer = UpdatedValuesRenderer;
+				_resultGrid.searchGrid.styleName = "updateGrid";
+				_resultGrid.percentWidth = 100;
+				_resultGrid.percentHeight = 100;
+				
+				
+				
+				// If we have a delete method add a coulmn with the delete icon
+				if(_confXML.hasOwnProperty("@deleteMethod")) {
+					_deleteMethod = _confXML.@deleteMethod;
+					_resultGrid.addEventListener("columnsCreated", addDeleteCol);
+					
+					if(_confXML.hasOwnProperty("@updateDayCountsScript")) {
+						_updateDayCountsScript = _confXML.@updateDayCountsScript;
+					} else {
+						Alert.show("[AttributeUpdate]:\tno script to update the day counts found, " + 
+								"this will lead to a chaos in the database if you delete an item");
+					}
+				}
+				
+				// add grid
+				content_box.addChild(_resultGrid);				
+				
+				// get table
+				_table = ConfigXML.db.tables.table.( attribute("id" ) == _confXML.@table ).toString();
+				//trace("table: " + _table);
+				
+				// get field list string
+				_fieldList = new XMLListCollection( XMLList(_confXML.grid[0].col.@field) ).toArray().join(", ");
+				
+				// get the data
+				getData();
+				
+				// getRfidData
+				_docTypeFilter = new FileFilter("text files", "*.txt");
+				enableUI();
+			}
+			
+			/**
+			 * Add a column to delete the item in the row.
+			 */
+			 private function addDeleteCol(event:Event):void
+			 {
+			 	
+				var columns:Array = _resultGrid.searchGrid.columns;
+				var deleteItemCol:DataGridColumn = new DataGridColumn();
+				deleteItemCol.width = 20;
+				deleteItemCol.itemRenderer = new ClassFactory(DeleteItemRenderer);
+				this.addEventListener("delete", deleteItemRequest);
+				
+				columns.push(deleteItemCol);
+				
+				_resultGrid.searchGrid.columns = columns;
+			 }
+			
+			// get the component configuration from the xml
+			private function getConfig():void {
+				
+	            ConfigXML = GlobalVars.getInstance().ConfigXML;
+								
+				// get the domain and allow it to upload files
+				var domain:String = ConfigXML..domain;
+				
+				// get the configuration for the component
+				_confXML = XmlHelper.getFileManagerXML(fileManagerId);
+				
+				// get the script name
+				var script:String = _confXML.@script;
+				_strUploadUrl = domain.concat(script);
+				
+				 
+				_updateDayCountsScript = 
+				
+				 _confXML = XmlHelper.getFileManagerXML(fileManagerId);
+	
+				//showAlert("nupload URL: " + _strUploadUrl);
+			}
+			
+			/**
+			 * Get the data.
+			 */
+			private function getData():void
+			{
+				
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Getting Data";
+				
+				var getDataSql:String = "SELECT " + _fieldList + " FROM " + _table;
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				var getRfidsData:GenericDataGetter = new GenericDataGetter(getDataSql);
+			}
+			
+			/**
+			 * Set the data as dataProvider for the grid. 
+			 */
+			private function setData(event:ObjectDataEvent):void
+			{
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				event.stopImmediatePropagation();
+				
+				if(_updated) // data updated (after the file is uploaded and te update script run successfully)
+				{
+					// all the data
+					var updatedDataUnfiltered:ArrayCollection = event.values[0];
+					// only the updated data
+					_updatedData = new ArrayCollection();
+					//_updatedData = event.values[0];
+					
+					// comparing the original and updated values
+					// find differences, and if there isn't one, delete the item	
+					for each (var updatedData:Object in updatedDataUnfiltered)
+					{
+						var originalData:Object = _originalDataHash[updatedData.id];
+						var updated:Object = new Object();
+						var updatedValues:Boolean = false;
+						
+						for (var i:String in updatedData)
+						{
+							if(originalData == null)
+							{
+								updated[i] = i;
+								updatedValues = true;
+									
+							} else {
+							
+								if(originalData[i] != updatedData[i] )
+								{
+									updated[i] = i;
+									updatedValues = true;	
+								}
+							}
+						    
+						}
+						
+						// if updated values have been found, add the data to the ArrayCollection
+						if(updatedValues) {
+							updatedData.updated = updated;
+							_updatedData.addItem(updatedData);
+						}
+					}
+					
+					_updatedData.refresh();
+					_resultGrid.dbData = _updatedData;
+					
+					
+					
+				} else // data not updated (beginning)
+				{
+					_originalData = event.values[0]; 
+					_resultGrid.dbData = _originalData;
+					_originalData.refresh();
+					
+					
+					// filling the hash with the data 
+					_originalDataHash = new Array();
+					
+					for each (var data:Object in _originalData.source)
+					{
+						_originalDataHash[data.id] = data;
+					}
+				
+				}
+				if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+            	
+            	filter_box.activeComp = _resultGrid;
+			}
+			
+			/**
+			 * Called when an rpc call returns an error
+			 */
+			private function loadFailed(event:ObjectDataEvent):void
+			{ 
+				_loadWin.closeThis();
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+			}
+			
+			
+			/*
+				File Handling
+			*/
+			
+			/**
+			 *  Called to choose for upload which contains the updated data;
+			 */
+			private function chooseFile():void {
+				_refUploadFile = new FileReference();
+				_refUploadFile.addEventListener(Event.SELECT, selectHandler);
+				_refUploadFile.browse([_docTypeFilter]);
+			}
+			
+			/**
+			 *  Called when a file is selected.
+			 */
+	        private function selectHandler(event:Event):void {
+	            _refUploadFile = FileReference(event.target);
+	            choosenFile.text = _refUploadFile.name;
+	            enableUploadBtn(); 
+	        }
+	        
+	        /**
+	        * Start the file upload and update procedure.
+	        */
+	        private function startUpload():void
+	        {
+	        	//trace("selectHandler: name=" + _refUploadFile.name + " URL=" + _strUploadUrl);
+	            _loadWin = new LoadPopUp();
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Updating Data";
+	            //disableUI();
+	            
+				var request:URLRequest = new URLRequest();
+				//var params:URLVariables = new URLVariables;
+				
+			    request.url = _strUploadUrl;
+			    request.method = URLRequestMethod.POST;
+	            
+			    _refUploadFile.addEventListener(IOErrorEvent.IO_ERROR, onUploadIoError);
+			  	_refUploadFile.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadSecurityError);
+			  	_refUploadFile.addEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadCompleteData);
+			  	_refUploadFile.addEventListener(HTTPStatusEvent.HTTP_STATUS, onUploadHttpStaus);
+				_refUploadFile.upload(request);
+				
+	        }
+			
+			
+			// Disable UI control
+			private function disableUI():void {
+				btnAdd.enabled = false;
+				disableUploadBtn();
+				_resultGrid.searchGrid.enabled = false;
+	
+			}
+			
+			// Enable UI control
+			private function enableUI():void {
+				btnAdd.enabled = true;
+				_resultGrid.searchGrid.enabled = true;
+			}
+			
+			// disable upload button 
+			private function disableUploadBtn():void
+			{
+				btnUpload.enabled = false;
+				btnUpload.alpha = 0.3;		
+				btnUpload.toolTip = "Choose a file to enable this button";	
+			}
+			
+			// enable upload button 
+			private function enableUploadBtn():void
+			{
+				btnUpload.enabled = true;
+				btnUpload.alpha = 1;		
+				btnUpload.toolTip = "start the update procedure";	
+			}
+			
+			/**
+			* Cancel and clear eventlisteners
+			*/
+			private function removeListeners():void {
+				_refUploadFile.removeEventListener(DataEvent.UPLOAD_COMPLETE_DATA, onUploadCompleteData);
+				_refUploadFile.removeEventListener(IOErrorEvent.IO_ERROR, onUploadIoError);
+				_refUploadFile.removeEventListener(SecurityErrorEvent.SECURITY_ERROR, onUploadSecurityError);
+				_refUploadFile.removeEventListener(HTTPStatusEvent.HTTP_STATUS, onUploadHttpStaus);
+				_refUploadFile.cancel();
+				
+				disableUploadBtn();
+				enableUI();
+			}
+			
+			
+			// Called when the file is uploaded
+			private function onUploadCompleteData(event:DataEvent):void {
+				
+				removeListeners();
+				
+				if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+            	
+            	choosenFile.text = 'no file choosen';
+            	
+            	_updated = true;
+				getData();
+				
+				var feedbackXML:XML = new XML(event.data);
+				_feedback = new XMLList( feedbackXML.* );
+				
+				// check for errors
+				if( _feedback.length() > 0 ) 
+				{
+
+					var feedbackPopup:AttributeUpdateResPopUp = new AttributeUpdateResPopUp();
+					feedbackPopup = AttributeUpdateResPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, AttributeUpdateResPopUp, true));
+					feedbackPopup.feedback = _feedback;
+					_feedback = new XMLList(); // clear feedback xml
+				}
+			}
+
+			/*
+				ERRORS
+			*/	
+
+			// Called on upload io error
+			private function onUploadIoError(event:IOErrorEvent):void {
+				if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+				showAlert("an upload IO error occured");
+			}
+			
+			// Called on upload http error
+			private function onUploadHttpStaus(event:HTTPStatusEvent):void {
+				if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+				showAlert("an upload HTTP error occured");
+			}
+			
+			// Called on upload security error
+			private function onUploadSecurityError(event:SecurityErrorEvent):void {
+				if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+				showAlert("an upload SECURITY error occured");
+			}
+			
+			// called when an error occured
+			private function showAlert(str:String):void
+			{
+				//clearUpload();
+				Alert.show(str,"",0x4,null,null,imgAlert);
+				enableUI();
+				//var errorPopUp:popUp = popUp(PopUpManager.createPopUp(this.parent, popUp, false));
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, false, "popup"));
+				infoWin.infoText = _confXML.info;
+				
+			}
+			
+			/**
+			 * Export active <code>Grid</code> to excel
+			 */  
+			private function exportData(event:MouseEvent):void
+			{
+				
+				var Export:ExcelExport = new ExcelExport(_resultGrid.searchGrid, _resultGrid.filename, _resultGrid.id);					  
+			}
+			
+			/*
+				DELETE AN ITEM
+			*/	
+			
+			/**
+			 * Event handler when the user clicked to delete an item, this action needs a confirmation
+			 */
+			private function deleteItemRequest(event:Event):void
+			{
+				event.stopImmediatePropagation();
+				_idToDelete = event.target.data.id;
+				
+				var confirmWin:ConfirmPopUp = ConfirmPopUp(PopUpManager.createPopUp(this, ConfirmPopUp, true, "popup"));
+				confirmWin.addEventListener("confirmed", deleteItem);
+				confirmWin.confirmLabel = "Are you sure you want to delete all data for the item " + _idToDelete + " ?" + 
+						"\n\nThis action cannot be undone!"; 
+				
+			}
+			
+			/**
+			 * Event handler to start the procedure to delete an item 
+			 */
+			private function deleteItem(event:Event):void
+			{
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Deleting data for item " + _idToDelete;
+				
+				var deleteItemRpc:GetDataByMethod = new GetDataByMethod(_deleteMethod,[_idToDelete]);
+				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT, itemDeleted);
+			}
+			
+			/**
+			 * When the data for the rfid has been deleted we have to update the day counts.
+			 */		
+			private function itemDeleted(event:ObjectDataEvent):void
+			{
+				
+        		_loadWin.closeThis();
+        		Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT, itemDeleted);	
+            	
+				_daysToUpdate= ArrayCollection(event.values[0]).source;
+				
+				_progressLoadWin = LoadWithProgressPopUp(PopUpManager.createPopUp(this, LoadWithProgressPopUp, true, "popup"));
+				_progressLoadWin.totalActions = _daysToUpdate.length as Number;	
+				_progressLoadWin.loadLabel = "Updating references and data counts in the database.\n\n" + 
+						"Please do not close the browser window while this operation is running!";
+				_progressLoadWin.completedLabel = "All the data for the item " + _idToDelete + " have been deleted,\n " + 
+						"and the references have been updated successfully."
+				//_progressLoadWin.estimated = Number(_daysToUpdate.length * 42);
+				updateDay(_daysToUpdate);
+			}
+			
+			/**
+			 * Update the day counts.
+			 */ 
+			private function updateDay(daysToUpdate:Array):void
+			{
+				_progressLoadWin.progress = _progressLoadWin.totalActions - _daysToUpdate.length;
+					
+				if (_daysToUpdate.length > 0) {
+					var dayToUpdate:String = _daysToUpdate.shift();
+					Globs.broker.addEventListener(EventsGlobals.CGI_REQUEST_COMPLETE, dayUpdated)
+					var cgiRequest:CgiRequest = new CgiRequest(_updateDayCountsScript, {day: dayToUpdate});
+				} else {
+					Globs.broker.removeEventListener(EventsGlobals.CGI_REQUEST_COMPLETE, dayUpdated);
+					_progressLoadWin.addEventListener(Event.CLOSE, reloadData);
+				}
+			}
+			
+			/**
+			 * reload the data when the progress PopUp is closed. 
+			 */
+			private function reloadData(event:Event):void
+			{
+				event.stopImmediatePropagation();
+				_progressLoadWin.removeEventListener(Event.CLOSE, reloadData);
+				getData();
+			}
+			
+			/**
+			 * Handler if a day is updated successfully.
+			 */
+			private function dayUpdated(event:ObjectDataEvent):void
+			{
+				var dayInfo:XML = new XML(event.values[0]);
+				Globs.broker.removeEventListener(EventsGlobals.CGI_REQUEST_COMPLETE, dayUpdated)
+				updateDay(_daysToUpdate);
+			}
+						
+		]]>
+	</mx:Script>
+	<mx:VBox width="100%" styleName="controlHeader" id="header" verticalAlign="middle">
+		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader" horizontalGap="10">
+				<mx:Button id="btnAdd" toolTip="Choose the file which contains the updated data" label="Choose File" click="chooseFile()" icon="@Embed('/assets/img/choose_file.png')" styleName="headerButton"/>
+				<mx:TextInput id="choosenFile" styleName="readonlyTextInput" enabled="false" width="300" text="no file choosen"/>
+				<mx:Button label="Update Data" toolTip="Start update procedure" id="btnUpload" click="startUpload()" icon="@Embed('/assets/img/fileUpIcon.png')" styleName="reloadButton"/>
+				<mx:Spacer width="100%" />
+	 		 	<mx:Image source="{helpIcon}" visible="true"
+	 		 		id="showInfoBut" toolTip="show Info"  click="showInfo()"/>
+		</mx:HBox>
+		<mx:HRule styleName="legendSeparator" width="100%" includeInLayout="{_updated}" visible="{_updated}"/>
+		<mx:Text id="notes" styleName="genLabelBrightSmall" color="#f92f10" fontSize="13" fontWeight="bold"
+			text="{ _updated ? 'Attributes updated successfully. Only rows with an updated value are diplayed.\nThe values colored green have been updated. Hit the Reload Data button to get the full list of data.' :  
+				'The table below shows the current data in the database.\nIt is recommended that you export this data to Excel before running the update.'}" />
+		<mx:HBox width="100%" includeInLayout="{_updated}" visible="{_updated}" paddingLeft="5" paddingBottom="5">
+			<mx:Button label="Reload Data" toolTip="Get current data from the database" id="btnRefresh" 
+				click="{_updated = false; choosenFile.text = 'no file choosen'; disableUploadBtn(); getData()}" 
+				icon="@Embed(source='/assets/img/refresh.png')" styleName="reloadButton"/>
+		</mx:HBox>
+		<mx:HRule styleName="legendSeparator" includeInLayout="{!_updated}" visible="{!_updated}" width="100%"/>
+		<mx:HBox id="filter" width="100%" styleName="controlPartHeader" includeInLayout="{!_updated}" visible="{!_updated}">
+			<mx:Label styleName="genLabelBright" id="filter_label" text="Filter:"/>
+			<class:DataFilterBox id="filter_box" comboBoxStyleName="analysisCombo" textInputStyleName="analysisClearTextInput"
+	 		 	height="25" width="100%"/>	
+		</mx:HBox>
+	</mx:VBox>
+	<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" width="100%" />
+	<mx:HBox id="content_box" width="100%" height="100%" paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0" 
+		borderColor="#333333" borderStyle="solid" borderThickness="1" borderSides="left, right" />
+	
+	<mx:HBox id="footer_box" width="100%" styleName="controlFooter">
+		<mx:Spacer width="100%" />
+		<mx:Button id="exportExcelBut" icon="@Embed('/assets/img/export_excel.png')" label="Export to Excel" labelPlacement="right" height="22" 
+			toolTip="Export current table content to Excel" styleName="normButton"
+			click="exportData(event)"/>
+	</mx:HBox>	
+
+</mx:VBox>	

@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox 
+	xmlns:mx="http://www.adobe.com/2006/mxml"  
+	xmlns:classes="classes.components.*" 
+	xmlns:grid="components.grids.*" 
+	xmlns:gridCtrl="components.grids.gridControls.*" 	
+	width="100%" height="100%" creationComplete="build()" 
+	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
+	backgroundAlpha="0.0"
+	verticalGap="0" xmlns:gridControls="components.grids.gridControls.*">
+	<mx:Script>
+		<![CDATA[
+			import mx.events.IndexChangedEvent;
+			import classes.events.DateValidEvent;
+			import mx.utils.ObjectUtil;
+			import mx.core.IFlexDisplayObject;
+			import classes.components.Grid;
+			import mx.core.Application;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.XmlHelper;
+			import classes.helpers.DateHelpers;
+			import mx.collections.ArrayCollection;
+			import classes.events.ObjectDataEvent;
+			import classes.events.Globs;
+			import classes.events.EventsGlobals;
+			import classes.GlobalVars;
+			import classes.rpc.GenericDataGetter;
+			import components.popUps.*;
+			import classes.helpers.ExcelExport;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+		
+			[Bindable]
+			[Embed(source="/assets/img/date_chooser.png")]
+            private var setDateRangeIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/clear.png")]
+            private var clearIcon:Class;
+            
+            /**
+            * The xml configuration for this component must be in a node <code>&lt;analysis&gt;</code> with the id <code>ANALYSIS_ID</code>  
+            * which is a child node of the <code>&lt;analysises&gt;</code> node.
+            */
+            public static const ANALYSIS_ID:String = 'shared_preferences';
+            
+            [Bindable]
+            private var _dbData:ArrayCollection;
+			
+            private var _resultGrid:Grid;
+			private var _f_one:String;
+			private var _f_two:String;
+			private var _box:String;            
+            private var _confXML:XML;
+            private var _loadWin:LoadPopUp;
+            private var _dbDateRange:Array;
+            private var _resultDateRangeClause:String;
+			private var	_meetingDateRangeClause:String;
+			private var _rfidMeetingClause:String;
+			private var _remainingRPCCalls:uint;
+			private var _dateRange:Array;
+            
+            private static const WEEK_SECONDS:uint = 604800; // seconds in a week (60*60*24*7)
+            private static const PRECISION:uint = 6;
+            
+            /* -----------------------------------------------------------------------------------------------
+			BUILD
+			----------------------------------------------------------------------------------------------- */
+			
+			private function build():void
+			{
+				
+				// initiating objects
+				_loadWin = new LoadPopUp();
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Preparing component";
+				
+				dateSetter.dbDateRange = DateHelpers.getDbRange();
+				_dbData = new ArrayCollection();
+				
+				// adding event listeners
+				addEventListener(DateValidEvent.DATE_CHANGED, dateValid);
+				
+				// get data for female mice
+				getFemales();
+				
+				// configuration xml for this
+				_confXML = XmlHelper.getAnalysisXML(ANALYSIS_ID);
+				
+				// configure grid
+				_resultGrid = new Grid(_confXML.grid[0]);
+				_resultGrid.dbData = _dbData;
+				_resultGrid.percentWidth = 100;
+				_resultGrid.percentHeight = 100;				
+				
+				// add grid
+				content_box.addChild(_resultGrid);
+			
+			}
+			            
+            /* -----------------------------------------------------------------------------------------------
+			DATE SETTER 
+			----------------------------------------------------------------------------------------------- */
+			
+			/**
+			 * @private
+			 * 
+			 * Event Handler function for the date setter dateValid event
+			 */
+			private function dateValid(event:DateValidEvent):void
+			{
+				if(event.valid) {
+					
+					loadDataBut.enabled = true;
+					
+				} else {
+					loadDataBut.enabled = false;
+				}
+				
+
+			}
+						
+			/* -----------------------------------------------------------------------------------------------
+			Handle keyboard input
+			----------------------------------------------------------------------------------------------- */
+			
+			/**
+			 * Reloaad data if enter key is pressed, reset on Escape key press
+			 */
+			 private function dateFieldKeyInput(event:KeyboardEvent):void
+			{
+    			//trace("Key Pressed: " + String.fromCharCode(event.charCode) + " (character code: " + event.charCode + ")");
+    			 if (event.keyCode == Keyboard.ENTER) {
+    			 	loadData(new MouseEvent("Click"));
+    			 }
+			} 
+			
+						
+			
+			/* -----------------------------------------------------------------------------------------------
+			DATA LOAD STUFF
+			----------------------------------------------------------------------------------------------- */
+			/**
+			 *  called when the data reload Button is clicked
+			 */ 
+			private function loadData(event:MouseEvent):void
+			{
+				
+				disableUI()
+				clearDataBut.visible = false;
+				
+				// getting values
+				_f_one = mice_one.selectedItem.id;
+				_f_two = mice_two.selectedItem.id;
+				_box = box_combo.selectedItem.id; 
+				
+				_dateRange = DateHelpers.formatDate(dateSetter.dateRange);
+				
+				// The where clauses for the time parts
+				_resultDateRangeClause =  " (DATE(`box_in`) >= '" + _dateRange[0] +"' AND DATE(`box_out`) <= '" + _dateRange[1] + "') "
+				_meetingDateRangeClause = " (DATE(`from`) >= '" + _dateRange[0] +"' AND DATE(`to`) <= '" + _dateRange[1] + "') ";
+				
+				// The where clause for the meetings rfid part
+				_rfidMeetingClause = " ( (rfid_from = '" + _f_one +"' AND rfid_to  = '" + _f_two + "')" + 
+						" OR (rfid_from = '" + _f_two + "' AND rfid_to  = '" + _f_one + "') ) ";
+				
+				
+				// The where clause for the box if chosen
+				if(_box == 'all') {
+					
+					// Get the boxes the two females met within the given time period
+					var getPairBoxesSQL:String = "SELECT DISTINCT box FROM " + XmlHelper.getDbTableName('meetings') + " WHERE" + _rfidMeetingClause + "AND" +   _meetingDateRangeClause;
+						
+					Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED, setPairBoxes);
+					Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+					var getDataData:GenericDataGetter = new GenericDataGetter(getPairBoxesSQL);
+					
+				} else {
+					_remainingRPCCalls = 1;
+					getData(_box);
+				}
+				
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Loading data";
+				event.stopImmediatePropagation();
+							
+			}
+			
+			
+			/**
+			 * Get the data for the chosen box
+			 */
+			private function getData(box:String):void
+			{
+				
+				// the where clause part for the box 
+				var boxClause:String = " AND box = '" + box + "' ";
+				
+				// The sql put together
+				var getDataSQL:String = "SELECT" + 
+						" (SELECT SUM(TIME_TO_SEC(dt)) FROM " + XmlHelper.getDbTableName('results') + " WHERE rfid = '" + _f_one + "' AND" +  _resultDateRangeClause + boxClause + "GROUP BY rfid) AS f_one_t," + 
+						" (SELECT SUM(TIME_TO_SEC(dt)) FROM " + XmlHelper.getDbTableName('results') + " WHERE rfid = '" + _f_two  +"' AND" + _resultDateRangeClause + boxClause + "GROUP BY rfid) AS f_two_t," +
+						" (SELECT SUM(TIME_TO_SEC(dt)) FROM " + XmlHelper.getDbTableName('meetings') + " WHERE" + _rfidMeetingClause  + boxClause + 
+						" AND" + _meetingDateRangeClause + "GROUP BY rfid_from) AS obs," + 
+						" (SELECT '" + box + "') AS box";
+						
+										
+				trace("[FemaleFrequency]GetDataSQL: " + getDataSQL);		
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				var getDataData:GenericDataGetter = new GenericDataGetter(getDataSQL);
+			}
+			
+			
+			/**
+			 * @private
+			 * get list of female mice
+			 */
+			private function getFemales():void
+			{
+				disableUI();
+				
+				var getFemalesSQL:String = "SELECT id FROM " + XmlHelper.getDbTableName('rfids') + " WHERE sex = 'f' ORDER BY id ASC";
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setFemalesData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				var getFemalesData:GenericDataGetter = new GenericDataGetter(getFemalesSQL);
+			}
+			
+			/**
+			 * @private
+			 * get boxes
+			 */
+			 private function getBoxes():void
+			 {
+			 	box_combo.enabled = false;
+			 	
+				var getBoxesSQL:String = "SELECT id FROM " + XmlHelper.getDbTableName('boxes') + " ORDER BY id ASC";
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setBoxesData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				
+				var getBoxesData:GenericDataGetter = new GenericDataGetter(getBoxesSQL);	
+			 }
+			 
+			 
+			 
+			 /* -----------------------------------------------------------------------------------------------
+			EVENT HANDLING (Data loaded events)
+			----------------------------------------------------------------------------------------------- */
+			private function setFemalesData(event:ObjectDataEvent):void
+			{
+				var femaleData:ArrayCollection = event.values[0];
+				mice_one.dataProvider = femaleData;
+				mice_one.selectedIndex = 0;
+				
+				var femaleDataCopy:ArrayCollection = ObjectUtil.copy(femaleData) as ArrayCollection; 
+				mice_two.dataProvider = femaleDataCopy;
+				mice_two.selectedIndex = 1;
+				
+				
+				enableUI();
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setFemalesData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				event.stopImmediatePropagation();
+				
+				getBoxes();
+				
+			}
+			
+			private function setBoxesData(event:ObjectDataEvent):void
+			{
+				var boxesData:ArrayCollection = event.values[0];
+				boxesData.addItemAt({id:"all"},0);
+				box_combo.dataProvider = boxesData;
+				box_combo.selectedIndex = 0;
+				box_combo.enabled = true;
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setBoxesData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				event.stopImmediatePropagation();
+				
+				if(_loadWin != null) {
+					_loadWin.closeThis();
+					
+				}
+			}
+			
+
+			private function setPairBoxes(event:ObjectDataEvent):void
+			{
+				var pairBoxes:Array = event.values[0].source;
+				
+				// No shared boxes means no data
+				if(pairBoxes.length == 0) {
+					noData();
+				}
+				
+				_remainingRPCCalls = pairBoxes.length;
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setPairBoxes);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+				event.stopImmediatePropagation();
+				
+				// Load the data for each box
+				
+				for each (var data:Object in pairBoxes) {
+					_box = data.box;
+					getData(_box);
+				}
+					
+			}
+			
+			/**		
+			 * @private
+			 * 
+			 * Append the data to the grid when a result is returned
+			 */ 
+			private function setData(event:ObjectDataEvent):void
+			{
+				var newData:ArrayCollection = event.values[0];
+				
+				if(newData[0].obs != null) {
+					var newDataSource:Array = newData.source;
+					var oldDataSource:Array = ObjectUtil.copy(_dbData.source) as Array;
+					
+					// Calculating missing values
+					for each (var data:Object in newDataSource) {
+						
+						// calculating percentage based on absolute values
+						var f_one_t_per:Number = (data.f_one_t * 100) / WEEK_SECONDS;
+						var f_two_t_per:Number = (data.f_two_t * 100) / WEEK_SECONDS;
+						
+						var obs_per:Number = (data.obs * 100) / WEEK_SECONDS;
+						
+						// calculating expected time spent together 
+						var exp:Number = ( (f_one_t_per / 100) * (f_two_t_per / 100) ) * 100;
+						
+						// adding calculated, missing data to data object
+						data.f_one_t_per = f_one_t_per.toFixed(PRECISION);
+						data.f_two_t_per = f_two_t_per.toFixed(PRECISION);
+						data.obs_per = obs_per.toFixed(PRECISION); 
+						data.exp = exp.toFixed(PRECISION);
+						
+						data.f_one = _f_one;
+						data.f_two = _f_two;
+						data.from_date = _dateRange[0];
+						data.to_date = _dateRange[1];
+						
+					}
+					
+					
+					var updatedDbDataSource:Array = newDataSource.concat(oldDataSource);
+					_dbData = new ArrayCollection(updatedDbDataSource);
+					
+					_resultGrid.dbData = _dbData as ArrayCollection;
+					_dbData.refresh();
+					clearDataBut.visible = true;
+					
+					enableUI();
+					
+				} else {
+					noData();
+				}
+				
+				_resultGrid.searchGrid.selectedIndex = 0;
+				
+				event.stopImmediatePropagation();
+				
+				// Keep track of the remaining rpc calls 
+				// Remove the popup if all rpc calls are made
+				_remainingRPCCalls--;
+				
+				if(_remainingRPCCalls == 0) {
+					Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setData);
+					Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+					_loadWin.closeThis();
+				}
+				
+				//filter_box.activeComp = _resultGrid;
+			}
+			
+			/**
+			 * Export active <code>Grid</code> to excel
+			 */  
+			private function exportData(event:MouseEvent):void
+			{
+				var filename:String =  _resultGrid.filename + '_' + _f_one + '_' + _f_two;
+				var Export:ExcelExport = new ExcelExport(_resultGrid.searchGrid, filename, _resultGrid.id);					  
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = _confXML.info;
+				
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * Called when an rpc call returns an error
+			 */
+			private function loadFailed(event:ObjectDataEvent):void
+			{ 
+				_loadWin.closeThis();
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadFailed);
+			}
+			
+			
+			
+			private function enableUI():void
+			{
+				mice_one.enabled = true;
+				mice_two.enabled = true;
+				loadDataBut.enabled = true;
+			}
+			
+			private function disableUI():void
+			{
+				mice_one.enabled = false;
+				mice_two.enabled = false;
+				loadDataBut.enabled = false;
+			}
+			
+			private function noData():void
+			{
+				var noDataPop:NoDataPopUp = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false,"popup"));
+				noDataPop.noDataLabel = "No results found for the selected criterias";
+				enableUI();
+				if(_loadWin != null) {
+					_loadWin.closeThis();
+				}
+			}
+			
+			/**
+			 * @private
+			 * Custom filter function for the auto complete text input
+			 */
+			private function filterMice(item:Object, text:String):Boolean
+			{
+				
+				if ( item.id.toLowerCase().indexOf(text.toLocaleLowerCase()) == -1)
+				{
+					return false;
+				}  else {
+					return true;
+				}
+				
+				
+			}
+
+            
+		]]>
+	</mx:Script>
+		
+	<mx:VBox width="100%" verticalGap="0" styleName="controlHeader">
+		<mx:HBox width="100%"  verticalAlign="middle"  styleName="controlPartHeader">
+			<mx:Label styleName="genLabelBright" text="Female one:" />
+			<classes:AutoCompleteTextInput id="mice_one" filterFunction="filterMice" height="21" styleName="autoCompleteTextInput" width="100" labelField="id"
+				enabled="false"/>
+			
+			<mx:Label styleName="genLabelBright" text="Female two:" />
+			<classes:AutoCompleteTextInput id="mice_two" height="21" filterFunction="filterMice" styleName="autoCompleteTextInput" width="100" labelField="id"
+				enabled="false"/>
+			
+			<mx:Label styleName="genLabelBright" text="Box(es):" />
+			<mx:ComboBox id="box_combo" height="18" styleName="analysisCombo" width="55" labelField="id"
+				toolTip="Select a box number or get data from all boxes"
+				enabled="false" rowCount="10"/>
+	 		
+	 		 <mx:Spacer width="100%" />
+	 		 <mx:Image source="{helpIcon}" visible="true"
+	 		 	id="showInfoBut" toolTip="show Info"  buttonMode="true" useHandCursor="true" mouseChildren="false" click="showInfo()"/>
+	 		 	 
+		</mx:HBox>
+		<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" width="100%" />
+		<mx:HBox width="100%" styleName="controlPartHeader">
+			<gridCtrl:GenericDateSetter id="dateSetter" weekSelection="true"/>
+		
+	 		<mx:Button icon="{reloadIcon}" visible="true"
+	 			 id="loadDataBut" toolTip="Click to get the data" styleName="reloadButton" height="100%"
+	 		 	label="Get Data" labelPlacement="right" click="loadData(event)"/>
+	 		 	
+	 		  <mx:Button icon="{clearIcon}" visible="false"
+	 		 	id="clearDataBut" toolTip="Clear all the data from the grid below" styleName="normButton" height="100%"
+	 		 	label="Clear Data" labelPlacement="right" 
+	 		 	click="_dbData.removeAll(); _resultGrid.dbData=_dbData; clearDataBut.visible=false;" />
+	 		 			
+		</mx:HBox>
+	</mx:VBox>
+	<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" />
+	<mx:HBox id="content_box" width="100%" height="100%" paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0" styleName="analyzerContent"/>
+	<mx:HBox id="footer_box" width="100%" styleName="controlFooter">
+		<mx:Spacer width="100%" />
+		<mx:Button id="exportExcelBut" icon="{exportExcelIcon}" label="Export to Excel" labelPlacement="right" height="22" 
+			toolTip="Export current table content to Excel" styleName="headerButton"
+			enabled="{_dbData.length > 0}"
+			visible="{_dbData.length > 0}"
+			click="exportData(event)"/>
+	</mx:HBox>	
+		
+</mx:VBox>

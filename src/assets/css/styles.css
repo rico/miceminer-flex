@@ -1,0 +1,1718 @@
+/* ------------------------------------------------
+	FONTS
+------------------------------------------------ */
+@font-face {
+    src: url("../fonts/MyriadWebPro.ttf");
+    fontFamily: "MyriadPro";
+    advancedAntiAliasing: true;
+}
+
+@font-face{
+    src: url("../fonts/MyriadWebProBold.ttf");
+    fontFamily: "MyriadPro";
+    fontWeight: bold;
+	advancedAntiAliasing: true;    
+}
+
+global {
+	color: #BBBBBB;
+    fontFamily: 'MyriadPro', 'Myriad', 'Arial';
+	fontSize: 11;
+}
+/* ------------------------------------------------
+	APPLICATION
+------------------------------------------------ */
+
+Application {
+   backgroundColor: #000000;
+   background-alpha: 1;
+}
+
+ToolTip {
+	color: #FFFFFF;
+	background-color: #000000;
+	background-alpha: 0.9;
+    fontFamily: 'MyriadPro';
+	fontSize: 12;
+}
+
+/* ------------------------------------------------
+	ALERT
+------------------------------------------------ */
+
+Alert{
+background-color: #000000;
+	background-alpha: 0.8;
+	padding-bottom:5;
+	padding-top:30;
+	padding-left:5;
+	padding-right:5;
+	padding-bottom:5;
+	vertical-align:middle;
+	border-style:solid;
+	border-thickness:1;
+	border-alpha:1.0;
+	border-color: #f92f10;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+	corner-radius: 10;
+	title-style-name:"alertTitle";
+	button-style-name: "normButton";
+}
+
+.alertTitle{
+	fontFamily:'MyriadPro';
+	font-size:14;
+	font-weight:bold;
+	text-align:center;
+	color:#FFFFFF;
+	text-decoration:underline
+}
+
+/* ------------------------------------------------
+	Labels
+------------------------------------------------ */
+.genLabel {
+	font-size: 14;
+	fontFamily: 'MyriadPro';
+	color: #BBBBBB;
+}
+
+.genLabelDark {
+	font-size: 14;
+	fontFamily: 'MyriadPro';
+	color: #666666;
+}
+
+.genLabelDarkSmall {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	color: #666666;
+}
+
+.genLabelBright {
+	font-size: 14;
+	fontFamily: 'MyriadPro';
+	color: #FFFFFF;
+}
+
+.genLabelBrightSmall {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	color: #FFFFFF;
+}
+
+.headerLabel {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	color: #000000;
+}
+
+.headerLabelBright {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	color: #FFFFFF;
+	font-weight:bold;
+}
+
+.compLabel {
+	font-size: 11;
+	fontFamily: 'MyriadPro';
+	color: #444444;
+	text-roll-over-color: #000000;
+}
+
+.brightLabel {
+	font-size: 11;
+	fontFamily: 'MyriadPro';
+	color: #FFFFFF;
+	text-roll-over-color: #333333;
+}
+
+.filterLabel {
+	color: #000000;
+	font-size: 12;
+	font-family: 'MyriadPro';
+}
+
+.graphControlLabel {
+	color: #FFFFFF;
+	font-size: 12;
+	font-family: 'MyriadPro';
+}
+.graphControlHighlight {
+	color: #FFFFFF;
+	font-size: 11;
+	font-weight:bold;
+	font-family: 'MyriadPro';
+}
+
+.loginFalseLabel {
+	color: #FA6706;
+	font-size: 13;
+	font-weight: bold;
+	font-family: 'MyriadPro';
+}
+
+
+/* ------------------------------------------------
+	Rules
+------------------------------------------------ */
+.brightRule {
+	stroke-color: #FFFFFF;
+	shadow-color: #FFFFFF;
+	stroke-width: 1;
+}
+
+.darkRule {
+	stroke-color: #666666;
+	shadow-color: #666666;
+	stroke-width: 1;
+}
+
+
+
+/* ------------------------------------------------
+	LAYOUT COMPONENTS
+------------------------------------------------ */
+.appBox {
+	verticalGap: 0;
+	background-color: #FFFFFF;
+	border-style:none;
+}
+
+.header {
+	background-image:Embed("/assets/img/backgrounds/nav_back.png");
+	background-size: "100%";
+	horizontal-gap: 20;
+	border-style:none;
+	padding-bottom: 10;
+	padding-left: 10;
+	padding-right: 10;
+	padding-top: 10;
+	vertical-align:middle;
+	drop-shadow-enabled: true;
+	drop-shadow-color: #666666;
+	border-sides: bottom;
+	border-style:solid;
+	border-thickness: 1;
+	border-color: #666666;
+}
+
+.content {
+	border-style: none;
+	backgroundColor: #000000;
+	background-alpha: 0.3;
+	padding-bottom: 2;		
+}
+
+.footer {
+	background-image:Embed("/assets/img/backgrounds/nav_back.png");
+	background-size: "100%";
+	padding-left: 10;
+	padding-right: 10;
+	padding-top: 10;
+	padding-bottom:10;
+	vertical-align: middle;
+}
+
+.gridsComp {
+	backgroundColor:#878787;
+}
+
+.compBox {
+	backgroundColor:#878787;
+	divider-skin: Embed("/assets/img/divider_white.png")
+}
+
+/* ------------------------------------------------
+	Analysis Boxes
+------------------------------------------------ */
+TitleWindow {
+	padding-left:5;
+	padding-right:5;
+	padding-top:5;
+	padding-bottom:5;
+	corner-radius:0;
+	background-color:#878787;
+	background-alpha:1;
+	border-color: #333333;
+	border-alpha: 0.9;
+}
+.windowStyles {
+	color: #FFFFFF;
+	font-size: 11;
+	font-family: 'MyriadPro';
+	letterSpacing: 2;
+}
+
+/* ------------------------------------------------
+	Analysis Boxes
+------------------------------------------------ */
+
+.controlHeader {
+	horizontal-gap: 0;
+	vertical-align: middle;
+	/*background-image:Embed("/assets/img/backgrounds/back_header_comp.png");
+	background-size: "100%";*/
+	background-color: #333333;
+	background-alpha: 0.9;
+	border-style: solid;
+	border-color: #666666;
+	border-sides: "top left right";
+	padding-bottom:0;
+	padding-left:0;
+	padding-right:0;
+	padding-top:0;
+} 
+
+.controlPartHeader {
+	horizontal-gap: 10;
+	vertical-align: middle;
+	padding-left:5;
+	padding-top:5;
+	padding-bottom:5;
+	padding-right:5;
+}
+
+.controlFooter {
+	horizontal-gap: 10;
+	vertical-align: middle;
+	background-color: #878787;
+	border-style: solid;
+	border-color: #666666;
+	/*background-image:Embed("/assets/img/backgrounds/back_footer_comp.png");
+	background-size: "100%";*/
+	background-color: #333333;
+	background-alpha: 0.9;
+	border-sides: "bottom left right";
+	padding-bottom:5;
+	padding-left:5;
+	padding-right:5;
+	padding-top:5;
+	
+}
+
+.detailPanel {
+	background-color: #333333;
+	background-alpha: 0.9;
+	corner-radius: 0;
+	border-thickness-left: 3;
+	border-thickness-right: 3;
+	border-thickness-bottom: 3;
+	border-thickness-top: 0;
+	border-color: #333333;
+	border-alpha: 0.9;
+}
+
+
+
+
+/* ------------------------------------------------
+	Text
+------------------------------------------------ */
+Text {
+	font-size: 12;
+	font-family: 'MyriadPro';
+	test-color: #000000;
+}
+
+/* ------------------------------------------------
+	(Super) TAB NAVIGATOR
+------------------------------------------------ */
+.navigators {
+	tab-offset: 10;
+	left:3;
+	right:3;
+	top: 1;
+	bottom: 2;
+    /*tabWidth: 100;*/ 
+    paddingRight: 0;
+    paddingLeft: 5;
+    paddingTop: 0;
+    paddingBottom: 0;
+    backgroundAlpha: 0.9; 
+   	backgroundColor: #333333;
+    borderStyle: solid; 
+    borderColor: #FFFFFF;
+    borderThickness: 1; 
+    cornerRadius: 6;
+    tabStyleName: "tabStyle";
+    selectedTabTextStyleName: "selectedTab";
+	horizontalGap: 0;
+	
+}
+
+.selectedTab {
+	font-family: 'MyriadPro';
+	color: #FFFFFF;
+	font-weight: bold;
+}
+
+.tabStyle {
+    cornerRadius: 6;
+   	backgroundColor: #DDDDDD;
+   	borderColor: #FFFFFF;
+   	fillColor: #333333;
+   	fillAlpha: 0.9;
+   	selectedColor: #666666;
+  	selectedTextColor: #ffffff;
+   	color: #BBBBBB;
+   	font-size: 11;
+   	font-weight:normal;
+   	font-family: 'MyriadPro';
+   	textRollOverColor: #ffffff;    
+   	textAlign: "left";
+    tabCloseButtonStyleName: "closeButStyle";
+    
+    disabledSkin: ClassReference("classes.skins.SuperTabSkin");
+    downSkin: ClassReference("classes.skins.SuperTabSkin");
+    overSkin: ClassReference("classes.skins.SuperTabSkin");
+    upSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedUpSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedDownSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedOverSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedDisabledSkin: ClassReference("classes.skins.SuperTabSkin");
+}
+
+.closeButStyle {
+	upSkin: Embed("/assets/img/close_but.png");
+	downSkin: Embed("/assets/img/close_but.png");
+	overSkin: Embed("/assets/img/close_but.png");
+	disabledSkin: Embed("/assets/img/close_but.png");
+}
+
+/* component tab Navigator */
+
+.navigatorsComp {
+    left: 0;
+	right: 0;
+	top: 0;
+	bottom: 0;
+    /*tabWidth: 110;*/ 
+    paddingRight: 0;
+    paddingLeft: 0;
+    paddingTop: 0;
+    paddingBottom: 0;
+    backgroundAlpha: 1; 
+    backgroundColor: #FFFFFF;
+    borderStyle: none; 
+    borderColor: #FFFFFF;
+    borderThickness: 1; 
+    cornerRadius: 0;
+    tabStyleName: "tabStyleComp";
+    selectedTabTextStyleName: "selectedTabComp";
+	horizontalGap: 2;
+}
+
+.selectedTabComp {
+	font-family: 'MyriadPro';
+	color: #000000;
+	font-weight: bold;
+}
+
+
+.tabStyleComp {
+    backgroundColor: #0E0E0E;
+   	borderColor: #FFFFFF;
+   	fillColor: #FFFFFF;
+   	fillAlpha: 1;
+   	selectedColor: #fa6706;
+   	corner-radius:0;
+   	color: #000000;
+   	textRollOverColor: #000000;   
+   	textAlign: "left";
+   	font-size:11;
+   	font-weight:normal;
+   	font-family: 'MyriadPro';
+    tabCloseButtonStyleName: "closeButStyle";
+    disabledSkin: ClassReference("classes.skins.SuperTabSkin");
+    downSkin: ClassReference("classes.skins.SuperTabSkin");
+    overSkin: ClassReference("classes.skins.SuperTabSkin");
+    upSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedUpSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedDownSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedOverSkin: ClassReference("classes.skins.SuperTabSkin");
+	selectedDisabledSkin: ClassReference("classes.skins.SuperTabSkin");
+
+    
+}
+
+.closeButStyle {
+	upSkin: Embed("/assets/img/close_but.png");
+	downSkin: Embed("/assets/img/close_but.png");
+	overSkin: Embed("/assets/img/close_but.png");
+	disabledSkin: Embed("/assets/img/close_but.png");
+}
+
+/* ------------------------------------------------
+	COMBO BOX
+------------------------------------------------ */
+
+.searchCombo {
+
+	fillColors:#878787, #444444;
+	fill-alphas: 0.1, 1;
+	fillColorsOver: #878787, #666666;
+	fillColorRatios: 0, 100;
+	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	vertical-align:middle;
+ 	padding-top: 2;
+ 	font-size: 12;
+ 	font-weight:normal;
+ 	font-family: 'MyriadPro';
+	borderColor: #FA6706;
+	cornerRadius: 3;
+	dropdownStyleName: "comboDropDown";
+	
+	upSkin:ClassReference('classes.skins.ComboBoxSkin');
+    overSkin:ClassReference('classes.skins.ComboBoxSkin');
+    downSkin:ClassReference('classes.skins.ComboBoxSkin');
+    disabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedUpSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedOverSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDownSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDisabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+}
+ 
+.analysisCombo {
+	fillColors:#878787, #444444;
+	fill-alphas: 0.1, 1;
+	fillColorsOver: #878787, #666666;
+	fillColorRatios: 0, 100;
+	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	vertical-align:middle;
+ 	padding-top: 2;
+ 	font-size: 12;
+ 	font-weight:normal;
+ 	font-family: 'MyriadPro';
+	borderColor: #CCCCCC;
+	cornerRadius: 3;
+	dropdownStyleName: "comboDropDown";
+	
+	upSkin:ClassReference('classes.skins.ComboBoxSkin');
+    overSkin:ClassReference('classes.skins.ComboBoxSkin');
+    downSkin:ClassReference('classes.skins.ComboBoxSkin');
+    disabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedUpSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedOverSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDownSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDisabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+}
+ 
+.comboDropDown {
+	background-color: #FFFFFF;
+	background-alpha: 0.9;
+	color: #878787;
+	textRollOverColor: #000000;
+	drop-shadow-enabled: true;
+	drop-shadow-color: #FFFFFF;
+}
+
+/* ------------------------------------------------
+	BUTTONS 
+------------------------------------------------ */
+.normButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+	borderColors: #FFFFFF, #FFFFFF;
+ 	overBorderColors: #FFFFFF, #FFFFFF;
+ 	selectedBorderColors: #FFFFFF, #FFFFFF;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+ 	overFillColors: #666666, #FFFFFF;
+ 	overFillAlphas: 0.5, 0.5;
+ 	overFillColorRatios: 0, 141;
+ 	selectedFillColors: #FFFFFF, #FFFFFF;
+ 	selectedFillAlphas: 0.5, 0.5;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	font-weight:normal;
+ 	font-size: 10;
+ 	fontFamily: 'MyriadPro';
+}
+
+.headerButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+	borderColors: #CCCCCC, #CCCCCC;
+ 	overBorderColors: #CCCCCC, #CCCCCC;
+ 	selectedBorderColors: #CCCCCC, #CCCCCC;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #878787, #444444;
+ 	fillAlphas: 0.1, 0.6;
+ 	fillColorRatios: 0, 100;
+ 	overFillColors: #878787, #666666;
+ 	overFillAlphas: 0.5, 0.5;
+ 	overFillColorRatios: 0, 141;
+ 	selectedFillColors: #FFFFFF, #FFFFFF;
+ 	selectedFillAlphas: 0.5, 0.5;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	font-weight:normal;
+ 	font-size: 10;
+ 	fontFamily: 'MyriadPro';
+}
+
+.normButtonDark {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+	borderColors: #666666, #666666;
+ 	overBorderColors: #666666, #666666;
+ 	selectedBorderColors: #666666, #666666;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #EEEEEE, #DDDDDD;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+ 	overFillColors: #DDDDDD, #EEEEEE;
+ 	overFillAlphas: 0.5, 0.5;
+ 	overFillColorRatios: 0, 141;
+ 	selectedFillColors: #EEEEEE, #EEEEEE;
+ 	selectedFillAlphas: 0.5, 0.5;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #666666;
+ 	textRollOverColor: #666666;
+ 	font-weight:normal;
+ 	font-size: 10;
+ 	fontFamily: 'MyriadPro';
+}
+
+.gridButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+  	borderColors: #FA6706, #FA6706;
+	overBorderColors: #FA6706, #FA6706;
+    selectedBorderColors: #FA6706, #FA6706;
+    borderThickness: 1;
+    borderAlpha: 1;
+    fillColors: #FFFFFF, #666666;
+    fillAlphas: 0.5, 0.7;
+    fillColorRatios: 0, 38;
+    overFillColors: #666666, #FFFFFF;
+    overFillAlphas: 0.5, 0.5;
+    overFillColorRatios: 0, 141;
+    selectedFillColors: #FFFFFF, #FFFFFF;
+    selectedFillAlphas: 0.5, 0.5;
+    selectedFillColorRatios: 0, 255;
+    highlightAlphas: 0, 0;
+    color: #FFFFFF;
+    textRollOverColor: #FFFFFF;
+    font-weight:normal;
+    font-size: 10;
+    fontFamily: 'MyriadPro';
+}
+
+.reloadButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+	borderColors: #f92f10, #f92f10;
+	overBorderColors: #f92f10, #f92f10;
+ 	selectedBorderColors: #f92f10, #f92f10;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+ 	overFillColors: #666666, #FFFFFF;
+ 	overFillAlphas: 0.5, 0.5;
+ 	overFillColorRatios: 0, 141;
+ 	selectedFillColors: #FFFFFF, #FFFFFF;
+ 	selectedFillAlphas: 0.5, 0.5;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+	font-weight:normal;
+	font-size: 11;
+	fontFamily: 'MyriadPro';
+}
+
+
+.CompButtonBar {
+   	firstButtonStyleName: leftButton;
+   	buttonStyleName: midButton;
+   	lastButtonStyleName: rightButton;
+}
+
+.leftButton {
+ 	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');	
+	cornerRadii: 3, 0, 0, 3;
+	borderColors: #FFFFFF, #FFFFFF;
+ 	overBorderColors: #003399, #003399;
+ 	selectedBorderColors: #6699FF, #6699FF;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+	overBorderColors: #FFFFFF, #FFFFFF;
+	overFillColors: #76d7fe, #5cc6fe;
+    overFillAlphas: 1, 1;
+    overFillColorRatios: 0, 88;
+	selectedBorderColors: #FFFFFF, #FFFFFF;
+	selectedFillColors: #76d7fe, #5cc6fe;
+    selectedFillAlphas: 1, 1;
+    selectedFillColorRatios: 0, 255;
+	highlightAlphas: 1, 0;
+	color: #FFFFFF;
+	background-color: #FFFFFF;
+	textRollOverColor: #FA6706;
+	font-family: Arial;
+	fontSize: 10;
+	font-weight:normal;
+}
+
+.midButton {
+ 	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');	
+    cornerRadii: 0, 0, 0, 0;
+	borderColors: #FFFFFF, #FFFFFF;
+ 	overBorderColors: #003399, #003399;
+ 	selectedBorderColors: #6699FF, #6699FF;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+	overBorderColors: #FFFFFF, #FFFFFF;
+	overFillColors: #76d7fe, #5cc6fe;
+    overFillAlphas: 1, 1;
+    overFillColorRatios: 0, 88;
+	selectedBorderColors: #FFFFFF, #FFFFFF;
+	selectedFillColors: #76d7fe, #5cc6fe;
+    selectedFillAlphas: 1, 1;
+    selectedFillColorRatios: 0, 255;
+	highlightAlphas: 1, 0;
+	color: #FFFFFF;
+	background-color: #FFFFFF;
+	textRollOverColor: #FA6706;
+	font-family: Arial;
+	fontSize: 10;
+	font-weight:normal;
+}	
+
+.rightButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 0, 3, 3, 0;
+	borderColors: #FFFFFF, #FFFFFF;
+ 	overBorderColors: #003399, #003399;
+ 	selectedBorderColors: #6699FF, #6699FF;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+	overBorderColors: #FFFFFF, #FFFFFF;
+	overFillColors: #76d7fe, #5cc6fe;
+    overFillAlphas: 1, 1;
+    overFillColorRatios: 0, 88;
+	selectedBorderColors: #FFFFFF, #FFFFFF;
+	selectedFillColors: #76d7fe, #5cc6fe;
+    selectedFillAlphas: 1, 1;
+    selectedFillColorRatios: 0, 255;
+	highlightAlphas: 1, 0;
+	color: #FFFFFF;
+	background-color: #FFFFFF;
+	textRollOverColor: #FA6706;
+	font-family: Arial;
+	fontSize: 10;
+	font-weight:normal;
+}
+
+.windowShadeButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 0, 0;
+	borderColors: #333333, #333333;
+ 	overBorderColors: #333333, #333333;
+ 	selectedBorderColors: #333333, #333333;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #333333, #333333;
+ 	fillAlphas: 1, 1;
+ 	fillColorRatios: 0, 38;
+ 	overFillColors: #555555, #555555;
+ 	overFillAlphas: 1, 1;
+ 	overFillColorRatios: 0, 141;
+ 	selectedFillColors: #555555, #555555;
+ 	selectedFillAlphas: 0.5, 0.5;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	font-weight:normal;
+ 	font-size: 12;
+ 	fontFamily: 'MyriadPro';
+}
+
+.centerButton {
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 3, 3, 3, 3;
+	borderColors: #CCCCCC, #CCCCCC;
+	overBorderColors: #CCCCCC, #CCCCCC;
+	selectedBorderColors: #CCCCCC, #CCCCCC;
+	borderThickness: 1;
+	borderAlpha: 1;
+	fillColors: #878787, #444444;
+	fillAlphas: 0.1, 0.6;
+	fillColorRatios: 0, 100;
+	overFillColors: #878787, #666666;
+	overFillAlphas: 0.5, 0.5;
+	overFillColorRatios: 0, 141;
+	selectedFillColors: #FFFFFF, #FFFFFF;
+	selectedFillAlphas: 0.5, 0.5;
+	selectedFillColorRatios: 0, 255;
+	highlightAlphas: 0, 0;
+	color: #FFFFFF;
+	textRollOverColor: #FFFFFF;
+	font-weight:normal;
+	font-size: 11;
+	fontFamily: 'MyriadPro';
+}
+
+/* ------------------------------------------------
+	CONTROLLER
+------------------------------------------------ */
+.control {
+	padding-top: 5;
+	color: #FFFFFF;
+	background-alpha: 0;	
+}
+/* ------------------------------------------------
+	CUSTOM DATA GRID
+------------------------------------------------ */
+
+.searchGrid {
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
+	border-style:none;
+	border-thickness: 1;
+	border-color: #FFFFFF;
+	headerStyleName: "gridHeader";
+	vertical-grid-line-color: #AFAFAF;
+	color: #0A0A0A;
+	sortArrowSkin: Embed(source="/assets/img/dgArrow.png");
+  	roll-over-color: #4e4e4e;
+  	text-roll-over-color: #FFFFFF;
+  	selection-color: #ff4b1f;
+  	header-colors: #414141, #414141;
+  	text-selected-color: #ffffff;
+  	font-family: 'MyriadPro';
+  	alternatingItemColors: #fafafa, #eeeeee;
+}
+
+.searchGridStatic {
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
+	border-style:solid;
+	border-thickness: 1;
+	border-color: #666666;
+	headerStyleName: "gridHeader";
+	horizontal-grid-line-color: #666666;
+	vertical-grid-line-color: #666666;
+	color: #555555;
+	roll-over-color: #DDDDDD;
+  	selection-color: #DDDDDD;
+  	font-family: 'MyriadPro';
+}
+
+.graphGrid {
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
+	background-alpha: 0;
+	border-style:none;
+	border-thickness: 1;
+	border-color: #FFFFFF;
+	headerStyleName: "graphGridHeader";
+	horizontal-grid-line-color: #FFFFFF;
+	vertical-grid-line-color: #FFFFFF;
+	color: #FFFFFF;
+	sortArrowSkin: Embed(source="/assets/img/dgArrow.png");
+  	roll-over-color: #AEAEAE;
+  	text-roll-over-color: #FFFFFF;
+  	selection-color: #C0C0C0;
+  	text-selected-color: #333333;
+  	font-family: 'MyriadPro';
+  	header-colors: #999999, #999999;
+  	disclosure-closed-icon: Embed(source="/assets/img/tree/plus.png");
+	disclosure-open-icon: Embed(source="/assets/img/tree/minus.png");
+}
+
+.updateGrid {
+	left:0;
+	right:0;
+	top:0;
+	bottom:0;
+	border-style:none;
+	border-thickness: 1;
+	border-color: #FFFFFF;
+	headerStyleName: "gridHeader";
+	vertical-grid-line-color: #AFAFAF;
+	color: #0A0A0A;
+	sortArrowSkin: Embed(source="/assets/img/dgArrow.png");
+  	roll-over-color: #BABABA;
+  	text-roll-over-color: #FFFFFF;
+  	selection-color: #AFAFAF;
+  	header-colors: #414141, #414141;
+  	text-selected-color: #ffffff;
+  	font-family: 'MyriadPro';
+  	alternatingItemColors: #fafafa, #eeeeee;
+}
+
+
+/* header */
+.gridHeader {
+	vertical-grid-line-color: #AFAFAF;
+	color: #FFFFFF;
+	border-style: none;
+	font-family: 'MyriadPro';
+}
+
+.graphGridHeader {
+	backgroundColor: #000000;
+	background-alpha: 0;
+	background-gradient-colors: #000000 #000000;
+	horizontal-grid-line-color: #FFFFFF;
+	vertical-grid-line-color: #FFFFFF;
+	color: #FFFFFF;
+	border-color: #FFFFFF;
+	text-selected-color: #FFFFFF;
+	border-style: solid;
+	border-thickness:1;
+	font-family: 'MyriadPro';
+	icon-color: #FFFFFF;
+}
+/* ------------------------------------------------
+	CHART BOX
+------------------------------------------------ */
+.searchChart {
+	border-style:none;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;
+	background-color: #FFFFFF;
+}
+
+.searchChartAcc {
+	horizontal-align:center;
+	vertical-align:middle;
+	color: #666666;
+	border-style:none;
+  	roll-over-color: #a5c8de;
+  	selection-color: #7b95a6;
+  	top:0;
+  	left:0;
+  	right:0;
+  	bottom:0;
+  	padding-bottom:0;
+  	padding-top:0;
+  	padding-left:0;
+  	padding-right: 0; 
+  	axis-title-style-name: "genLabelDark";
+  	header-style-name: "searchChartAccHeader";
+  	font-family: 'MyriadPro';
+  	
+}
+
+.searchChartAccHeader {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	font-weight:normal;
+	color: #000000;
+	background-alpha: 0;
+	border-style:none;
+	border-thickness: 0;
+}
+
+
+.searchChartChild {
+	padding-bottom:0;
+  	padding-top:0;
+  	padding-left:0;
+  	padding-right: 0; 
+}
+
+/* -------------------------
+	COLUMN CHART
+--------------------------- */
+.custChart {
+	padding-bottom: 5;
+	padding-left: 5;
+	padding-right: 5;
+	padding-top: 5;
+	data-tip-renderer: ClassReference("components.renderers.DataTipRenderer");
+	font-size: 11;
+	fontFamily: 'MyriadPro';
+	font-weight:normal;
+	/*verticalAxisStyleNames: linedNumericAxis, linedNumericAxis;*/
+	/*verticalAxisStyleNames: hangingCategoryAxis, hangingCategoryAxis;*/
+	/*data-tip-style-name: "dataTipRenderer";*/
+}
+
+.edgeDataChart {
+	data-tip-renderer: ClassReference("components.renderers.DataTipRenderer");
+	font-size: 10;
+	fontFamily: 'MyriadPro';
+	font-weight:normal;
+	color: #FFFFFF;
+}
+	
+.edgeChartHorzAxisStyle {
+	font-size: 12;
+	fontFamily: 'MyriadPro';
+	font-weight:normal;
+	color: #FFFFFF;
+	horizontalAxisStyleName: edgeChartAxis;
+    verticalAxisStyleName: edgeChartAxis;
+}
+
+.edgeChartAxis {
+	color: #FFFFFF;	
+}
+
+/*
+	PIE CHART
+*/
+
+.groupedPieChart {
+	
+}
+
+/*
+	LEGEND
+*/
+
+.legendBox {
+	vertical-align: top;
+	horizontal-align: left;
+	padding-left: 5;
+	padding-right:5;
+	padding-top:5;
+	padding-bottom:5;
+	background-color: #000000;
+	background-alpha: 0.66;
+	vertical-gap: 5;
+}
+
+.searchChartLegendH {
+	vertical-align:middle;
+	padding-top:5;
+	padding-right:5;
+	padding-bottom:5;
+	padding-left:5;
+	border-style:none;
+	background-color: #000000;
+	background-alpha: 0.66;
+	horizontal-gap: 5;
+	color: #FFFFFF;
+}
+
+.searchChartLegendV {
+	vertical-gap: 5;
+	color: #FFFFFF;
+}
+
+.searchChartLegendItem {
+	vertical-align:middle;
+	horizontal-gap:2;
+	padding-left: 5;
+	padding-right: 15;
+	padding-top: 1;
+	padding-bottom:1;
+	marker-width:8;
+	marker-height:8;
+	color: #FFFFFF;
+	font-size: 12;
+	font-weight:normal;
+	font-family: 'MyriadPro';
+	arrowColor: #FA6706;
+	arrowSize: 7;
+	border-style:solid;
+	border-color: #FFFFFF;
+	border-thickness:1;
+	cornerRadius: 5;
+	backgroundColor: #FFFFFF;
+	background-alpha: 0;
+	text-roll-over-color: #666666;
+}
+
+.pieChartLegendItem {
+	vertical-align:middle;
+	horizontal-align:left;
+	horizontal-gap:2;
+	padding-left: 0;
+	padding-right: 0;
+	marker-width:8;
+	marker-height:8;
+	color: #FFFFFF;
+	font-size: 12;
+	font-weight:normal;
+	font-family: 'MyriadPro';
+}
+
+.legendSeparator {
+	stroke-color: #FFFFFF;
+	stroke-width: 1;
+	padding-left: 5;
+	padding-right: 5;
+}
+
+.dataTipRenderer {
+	vertical-align:middle;
+	horizontal-align: center;
+	background-color: #000000;
+	background-alpha: 0.66;
+	color: #FFFFFF;
+	font-family: 'MyriadPro';
+	font-size: 11;
+	font-weight: normal;
+	border-color: #FFFFFF;
+	border-alpha: 1;
+	border-style:solid;
+	corner-radius: 4;
+	paddingLeft:5;
+	paddingRight:5;
+	paddingTop:5;
+	paddingBottom: 5;
+	drop-shadow-enabled: true;
+	drop-shadow-color: #000000;
+	shadow-direction:right;
+	shadow-distance:4;
+}
+
+/*
+	TEXT INPUT
+*/
+.clearTextInput {
+	borderStyle: solid;
+	borderColor: #f92f10;
+	cornerRadius: 10;
+	/*height: 20;*/
+	textIndent:5;
+	borderThickness: 1;
+	backgroundColor: #ffffff;
+	textColor: #AFAFAF;
+	font-family: 'MyriadPro';
+	font-size: 12;
+	color: #000000;
+	clearButStyle: "clearBut";
+	searchIndicatorStyle: "searchIndicator";	
+}
+
+.analysisClearTextInput {
+	borderStyle: solid;
+	borderColor: #666666;
+	cornerRadius: 3;
+	/*height: 20;*/
+	textIndent:5;
+	borderThickness: 1;
+	backgroundColor: #ffffff;
+	textColor: #000000;
+	font-family: 'MyriadPro';
+	font-size: 12;
+	color: #000000;
+	clearButStyle: "clearBut";
+	searchIndicatorStyle: "searchIndicator";	
+}
+
+.readonlyTextInput {
+	borderStyle: solid;
+	borderColor: #666666;
+	cornerRadius: 3;
+	/*height: 20;*/
+	textIndent:5;
+	borderThickness: 1;
+	backgroundDisabledColor: #ffffff;
+	disabledColor: #000000;
+	font-family: 'MyriadPro';
+	font-size: 12;
+}
+
+.hcinput {
+	borderStyle: solid;
+	promptColor: #EEEEEE;
+	color: #333333;
+	borderColor: #ff4b1f;
+	cornerRadius: 3;
+	borderThickness: 1;
+	backgroundDisabledColor: #ffffff;
+	font-family: 'MyriadPro';
+	text-indent: 1;
+	font-size: 12;
+}
+
+.passwdInput {
+	borderStyle: solid;
+	promptColor: #000000;
+	color: #333333;
+	borderColor: #ff4b1f;
+	cornerRadius: 3;
+	borderThickness: 1;
+	backgroundDisabledColor: #ffffff;
+	font-family: 'MyriadPro';
+	text-indent: 1;
+	font-size: 14;
+}
+
+
+.searchIndicator {
+	upSkin: Embed("/assets/img/search.png");
+	downSkin: Embed("/assets/img/search.png");
+	overSkin: Embed("/assets/img/search.png");
+}
+
+
+.clearBut {
+	upSkin: Embed("/assets/img/close_but.png");
+	downSkin: Embed("/assets/img/close_but.png");
+	overSkin: Embed("/assets/img/close_but.png");
+}
+
+.autoCompleteTextInput {
+	border-color: #666666;
+	border-style: solid;
+	border-thickness: 1;
+	color: #000000;
+	font-family: 'MyriadPro';
+	font-size: 12;
+	icon-color: #CCCCCC;
+	
+	upSkin:ClassReference('classes.skins.ComboBoxSkin');
+    overSkin:ClassReference('classes.skins.ComboBoxSkin');
+    downSkin:ClassReference('classes.skins.ComboBoxSkin');
+    disabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedUpSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedOverSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDownSkin:ClassReference('classes.skins.ComboBoxSkin');
+    selectedDisabledSkin:ClassReference('classes.skins.ComboBoxSkin');
+}
+
+
+.comboButtonStyle {
+	background-color: #FFFFFF;
+}
+/* scroll bars */
+
+VScrollBar, HScrollBar, .customScrollBar {
+ downArrowUpSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    downArrowOverSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    downArrowDownSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    upArrowUpSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    upArrowOverSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    upArrowDownSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    thumbDownSkin: Embed(source="/assets/img/scrollBar/thumb.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbUpSkin: Embed(source="/assets/img/scrollBar/thumb.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbOverSkin: Embed(source="/assets/img/scrollBar/thumb.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    trackSkin: Embed(source="/assets/img/scrollBar/scrolltrack.png",
+        scaleGridLeft="7", scaleGridTop="4", scaleGridRight="8", scaleGridBottom="6" );
+}
+
+.aboutScrollStyle {
+	downArrowUpSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    downArrowOverSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    downArrowDownSkin: Embed(source="/assets/img/scrollBar/downArrow.png");
+    upArrowUpSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    upArrowOverSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    upArrowDownSkin: Embed(source="/assets/img/scrollBar/upArrow.png");
+    thumbDownSkin: Embed(source="/assets/img/scrollBar/thumb_invis.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbUpSkin: Embed(source="/assets/img/scrollBar/thumb_invis.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbOverSkin: Embed(source="/assets/img/scrollBar/thumb_invis.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    trackSkin: Embed(source="/assets/img/scrollBar/scrolltrack_invis.png",
+        scaleGridLeft="7", scaleGridTop="4", scaleGridRight="8", scaleGridBottom="6" );
+		
+}
+
+.infoScrollStyle {
+	downArrowUpSkin: Embed(source="/assets/img/scrollBar/downArrowDark.png");
+    downArrowOverSkin: Embed(source="/assets/img/scrollBar/downArrowDark.png");
+    downArrowDownSkin: Embed(source="/assets/img/scrollBar/downArrowDark.png");
+    upArrowUpSkin: Embed(source="/assets/img/scrollBar/upArrowDark.png");
+    upArrowOverSkin: Embed(source="/assets/img/scrollBar/upArrowDark.png");
+    upArrowDownSkin: Embed(source="/assets/img/scrollBar/upArrowDark.png");
+    thumbDownSkin: Embed(source="/assets/img/scrollBar/thumbDark.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbUpSkin: Embed(source="/assets/img/scrollBar/thumbDark.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    thumbOverSkin: Embed(source="/assets/img/scrollBar/thumbDark.png",
+        scaleGridLeft="7", scaleGridTop="5", scaleGridRight="8", scaleGridBottom="7");
+    trackSkin: Embed(source="/assets/img/scrollBar/scrolltrack_invis.png",
+        scaleGridLeft="7", scaleGridTop="4", scaleGridRight="8", scaleGridBottom="6" );
+		
+}
+
+/* sliders */
+
+.filterSlider {
+    dataTipOffset: -22;
+    data-tip-style-name: "mySliderTip";
+    /*thumb-skin: ClassReference("classes.skins.CustSliderThumbSkin");*/
+	/*track-skin: ClassReference("classes.skins.CustSliderThumbSkin");*/
+	thumb-skin: Embed(source="/assets/img/slider/thumb.png");
+	track-skin: Embed(source="/assets/img/slider/track_off.png");
+	track-highlight-skin: Embed(source="/assets/img/slider/track_on.png");
+    show-track-highlight: true;
+}
+
+.filterSliderInverse {
+    dataTipOffset: -22;
+    data-tip-style-name: "mySliderTip";
+    tick-color: #666666;
+    /*thumb-skin: ClassReference("classes.skins.CustSliderThumbSkin");*/
+	/*track-skin: ClassReference("classes.skins.CustSliderThumbSkin");*/
+	thumb-skin: Embed(source="/assets/img/slider/thumb.png");
+	track-highlight-skin: Embed(source="/assets/img/slider/track_off_inv.png");
+	track-skin: Embed(source="/assets/img/slider/track_on_inv.png");
+    show-track-highlight: true;
+}
+
+.mySliderTip {
+    background-color: #FFFFFF;
+    color: #000000;
+	font-weight:bold;
+	font-size: 10;
+	fontFamily: 'MyriadPro';
+}
+
+/* ------------------------------------------------
+	LOADING DATA POPUP
+------------------------------------------------ */
+
+.dataLoader {
+	background-color: #000000;
+	background-alpha: 0.8;
+	padding-bottom:15;
+	padding-top:15;
+	padding-left:15;
+	padding-right:15;
+	vertical-align:middle;
+	border-style:solid;
+	border-thickness:1;
+	border-alpha:1.0;
+	border-color: #FFFFFF;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+	corner-radius: 10;
+}	
+
+.dataLoaderPB {
+	background-alpha: 1.0;
+	borderColor: #FFFFFF;
+	barColor: #f92f10;
+	trackColors: #FFFFFF, #FFFFFF;
+	color: #FFFFFF;
+	trackHeight: 8;
+	border-style:solid;
+	label-align: center;
+	font-size: 13;
+	font-weight:normal;  
+}
+
+/* ------------------------------------------------
+	noData popUp
+------------------------------------------------ */
+.noDataPopUp {
+	background-color: #000000;
+	background-alpha: 0.8;
+	border-style:solid;
+	border-thickness:1;
+	border-alpha:1.0;
+	border-color: #f92f10;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+	corner-radius: 10;
+}	
+
+/* ------------------------------------------------
+	noData popUp
+------------------------------------------------ */
+.copiedToClipboardPopUp {
+	background-color: #000000;
+	padding-bottom: 7;
+	padding-top: 7;
+	padding-right: 7;
+	padding-left: 7;
+	background-alpha: 0.75;
+	border-style:solid;
+	border-thickness:1;
+	border-alpha:1.0;
+	border-color: #FFFFFF;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+	corner-radius: 5;
+}	
+
+/* ------------------------------------------------
+	info popUp
+------------------------------------------------ */
+.infoPopUp {
+	color: #000000;
+	background-color: #FFFFFF;
+	border-color: #5077AB;
+	border-style:solid;
+	border-thickness: 1;
+	corner-radius: 6;
+	padding-bottom: 10;
+	padding-top: 10;
+	padding-left: 10;
+	padding-right: 10;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+}
+
+/* ------------------------------------------------
+	info popUp
+------------------------------------------------ */
+.alertPopUp {
+	color: #000000;
+	background-color: #FFFFFF;
+	border-color: #f92f10;
+	border-style:solid;
+	border-thickness: 1;
+	corner-radius: 6;
+	padding-bottom: 10;
+	padding-top: 10;
+	padding-left: 10;
+	padding-right: 10;
+	drop-shadow-enabled:true;
+	drop-shadow-color: #000000;
+}
+
+/* ------------------------------------------------
+	DATE PICKER
+------------------------------------------------ */
+.dateRanger {
+	background-color: #000000;
+	background-alpha: 0.75;
+	border-color: #FFFFFF;
+	border-style:solid;
+	border-alpha: 1.0;
+	border-thickness: 1;
+	corner-radius: 10;
+	padding-bottom: 20;
+	padding-top: 20;
+	padding-left: 20;
+	padding-right: 20;
+	drop-shadow-enabled: true;
+	drop-shadow-color: #000000;
+}
+
+.dateChooser {
+	color: #000000;
+	background-color: #FFFFFF;
+	background-alpha: 1;
+	border-color: #666666;
+	color: #444444;
+	border-style:solid;
+	border-thickness: 1;
+	corner-radius: 0;
+	selection-color: #01a601;
+	roll-over-color: #a5c8de;
+	horizontal-gap: 4;
+	vertical-gap: 4;
+	padding-bottom: 3;
+	padding-top: 3;
+	padding-left: 3;
+	padding-right: 3;
+	header-style-name:"dateChooserHeader";
+	header-colors: #DDDDDD, #DDDDDD;
+}
+
+.dateChooserHeader {
+	color: #444444;
+	font-size: 12;
+	font-weight: bold;
+	font-family: 'MyriadPro';
+}
+
+.dateRangerCont {
+	color: #000000;
+	background-color: #FFFFFF;
+	border-color: #666666;
+	border-style:solid;
+	border-thickness: 1;
+	corner-radius: 3;
+	padding-bottom: 5;
+	padding-top: 5;
+	padding-left: 5;
+	padding-right: 5;
+}
+
+.dateFormBack {
+	horizontal-gap:0;
+	vertical-align:middle;
+	corner-radius:3;
+	border-style:solid;
+	border-color: #01a601;
+	background-color: #FFFFFF;
+	color: #000000;
+	padding-left:6;
+	padding-right:7;
+	padding-top:0;
+	padding-bottom:0;
+	
+}
+/* search input field */
+.dateTextInput {
+	
+	font-size: 12;
+	font-family: 'MyriadPro';
+	backgroundColor: #ffffff;
+	background-disabled-color: #FFFFFF;
+	textColor: #000000;
+	color: #000000;
+	disabled-color: #333333;
+	/*font-size: 10;
+	font-family: Arial;*/
+	font-style:normal;
+	vertical-align:middle;
+	border-style:none;
+	padding-bottom:0;
+	padding-top:0;
+	padding-left:0;
+	padding-right:0;
+}
+
+/* ------------------------------------------------
+	FILTER STYLES
+------------------------------------------------ */
+.filterLabelCanv {
+	vertical-align:middle;
+	horizontal-align:center;
+	corner-radius:3;
+	border-style:solid;
+	border-color: #FFFFFF;
+	background-color: #FFFFFF;
+	color: #000000;
+	padding-left:5;
+	padding-right:5;
+}
+
+/*
+	GRAPH CONTROLS
+*/
+
+/* SuperPanel */
+
+.SuperPanel {
+	headerHeight: 26;
+	backgroundColor:#333333;
+	border-thickness-left:0;
+	border-thickness-right:0;
+	border-thickness-top:0;
+	border-thickness-bottom:0;
+	backgroundAlpha: 0.75; 
+	roundedBottomCorners: true;
+	padding-left: 0;
+	padding-bottom:0;
+	padding-right:0;
+	padding-top:0;
+	titleStyleName: "mypanelTitle";
+}
+
+.mypanelTitle {
+	background-alpha:0.75;
+	color: #FFFFFF;
+	background-color: #000000;
+	border-color: #333333;
+	border-thickness:1;
+	border-style:solid;
+	font-family: 'MyriadPro';
+	fontSize: 12;
+	fontWeight: bold;
+}
+/* edge data title window */
+.edgeData {
+	background-color: #333333;
+	close-button-up-skin: Embed(source='/assets/img/close_win.png');
+	close-button-over-skin: Embed(source='/assets/img/clear_over.png');
+	close-button-down-skin: Embed(source='/assets/img/clear_over.png');
+	background-alpha: 0.9;
+	corner-radius: 6;
+	rounded-bottom-corners: false;
+	header-colors: #AFAFAF, #AFAFAF;
+}
+
+
+/* Boxes */
+.graphControlBox {
+	backgroundColor:#000000;
+	backgroundAlpha:0.3;
+	borderColor:#333333; 
+	borderStyle:solid;
+	borderThickness:1; 
+	borderSides:left, bottom, right;
+	verticalGap:3;
+	paddingBottom:5;
+	paddingLeft:5;
+	paddingRight:5;
+	paddingTop:5;
+	verticalScrollPolicy:off;		
+}
+
+/* ------------------------------------------------
+	OTHER STYLES
+------------------------------------------------ */
+
+.dateErrorTip{
+	color: #FFFFFF;
+    fontSize: 9;
+    fontWeight: "bold";
+    shadowColor: #000000;
+    borderColor: #CE2929;
+    borderStyle: "errorTipBelow";
+    paddingBottom: 4;
+    paddingLeft: 4;
+    paddingRight: 4;
+    paddingTop: 4;
+}
+
+.checkBox {
+	border-style: solid;
+	border-thickness: 1;
+	border-color: #FFFFFF;
+	fillColors: #FFFFFF, #666666;
+ 	fillAlphas: 0.5, 0.7;
+ 	fillColorRatios: 0, 38;
+ 	label-placement:left;
+ 	font-size: 10;
+	font-family: 'MyriadPro';
+	color: #FFFFFF;
+	text-roll-over-color: #FFFFFF;
+	icon-color: #FFFFFF;
+ 	
+}
+
+.menuTree {
+	vertical-align: top;
+	horizontal-align: left;
+	padding-left: 5;
+	padding-right:5;
+	padding-top:2;
+	padding-bottom:2;
+	border-style: none;
+	background-alpha:0;
+	vertical-gap: 0;
+	color: #FFFFFF;
+	font-size: 12;
+	font-weight:normal;
+	font-family: 'MyriadPro';
+	indentation: 5;
+	default-leaf-icon: Embed("/assets/img/tree/bullet.png");
+	disclosure-closed-icon: Embed("/assets/img/tree/plus.png");
+	disclosure-open-icon: Embed("/assets/img/tree/minus.png");
+	vertical-align:middle;
+	text-roll-over-color: #FFFFFF;
+	text-selected-color: #f92f10;
+	roll-over-color: #666666;
+	selection-color: #FFFFFF;
+}
+
+.uploadDataPB {
+	background-alpha: 1.0;
+	borderColor: #FFFFFF;
+	barColor: #f92f10;
+	trackColors: #FFFFFF, #FFFFFF;
+	color: #666666;
+	trackHeight: 8;
+	border-style:solid;
+	label-align: center;
+	font-size: 13;
+	font-weight:normal;
+	corner-radius: 3;
+	fontFamily: 'MyriadPro', 'Myriad', 'Arial';
+	font-weight: normal;
+	fontSize: 11;
+}

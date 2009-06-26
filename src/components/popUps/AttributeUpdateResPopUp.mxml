@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" width="300" height="300" title="Update Warnings and Errors" creationComplete="initComp()">
+	<mx:Script>
+	
+		<![CDATA[
+		
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/clear.png")]
+			private var _close:Class;
+			
+			 // the error
+	        [Embed(source='/assets/img/exclamation.png')]
+	        [Bindable]
+	        private var _errorIcon:Class;
+	        
+	        // the not warning img
+	        [Embed(source='/assets/img/warning.png')]
+	        [Bindable]
+	        private var _warningIcon:Class;
+	        
+	        [Bindable]
+			[Embed(source="/assets/img/accept.png")]
+			private var _okIcon:Class;
+			
+			[Bindable]
+			private var _feedback:XMLList;
+			[Bindable]
+            private var _selectedItemFeedbackText:String;	
+			
+			
+			// Called when the component is initialized
+			private function initComp():void {
+                // Center the TitleWindow container 
+                // over the control that created it.
+                PopUpManager.centerPopUp(this);
+                infoGrid.selectedIndex = 0;
+            }
+            
+            
+            /**
+            * The feedback data.
+            */
+            public function set feedback(feedback:XMLList):void
+            {
+            	_feedback = new XMLList();
+            	_feedback = feedback;
+            	infoGrid.selectedIndex = 0;
+            	//_selectedItemFeedbackText = infoGrid.selectedItem.toString();
+            }
+            
+            /**
+            * @private 
+            * icon function
+            */
+            private function setIcon(item:Object):Class
+            {
+				var itemXML:XML = new XML(item);             
+            
+            	if( itemXML.name().localName ==  'error' )
+            	{
+	        		return _errorIcon;
+	        		
+	        	} else if( itemXML.name().localName ==  'warning' )
+	        	{
+					return _warningIcon;
+					  	
+	        	} else if( itemXML.name().localName ==  'success' )
+	        	{
+					return _okIcon;
+					  	
+	        	} else 
+	        	{
+	        		return null;	
+	        	}
+            }
+            
+            /**
+            * @private
+            * 
+            * label function
+            */
+            private function setLabel(item:Object):String
+            {
+            	var itemXML:XML = new XML(item); 
+            	
+            	if( itemXML.name().localName ==  'error' )
+            	{
+	        		return 'ERROR: ' + item.@id;
+	        		
+	        	} else if( itemXML.name().localName ==  'warning' )
+	        	{
+					return 'WARNING: ' + item.@id;
+					  	
+	        	} else if( itemXML.name().localName ==  'success' )
+	        	{
+					return itemXML.@id + " successfully updated";
+					  	
+	        	} else 
+	        	{
+	        		return null;	
+	        	}	
+            }
+            
+            
+		]]>
+	</mx:Script>
+		<mx:VBox width="100%" height="100%"  >
+			<mx:VDividedBox width="270" height="223">
+				<mx:List borderColor="#666666" id="infoGrid" width="100%" height="151"
+					dataProvider="{_feedback}"
+					color="#555555" textRollOverColor="#a0c3da" selectionColor="#a0c3da" textSelectedColor="#FFFFFF"
+					
+					iconFunction="setIcon"
+					labelFunction="setLabel"
+				/>
+				<!--  change="_selectedItemFeedbackText=List(event.target).selectedItem.toString()" -->
+				<mx:TextArea borderColor="#666666" color="#000000" cornerRadius="0" id="details" width="100%" height="146"
+					text="{infoGrid.selectedItem.toString()}"
+				/>
+			</mx:VDividedBox>
+			<mx:HBox width="100%">
+				<mx:Spacer width="100%" />
+				<mx:Button label="close" toolTip="close window" styleName="headerButton" id="closeBut" icon="{_close}"
+					height="22" click="PopUpManager.removePopUp(this); parentApplication.alpha = 1;"/>	
+			</mx:HBox>
+		</mx:VBox>
+</mx:TitleWindow>

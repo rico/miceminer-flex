@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:flexlib="http://code.google.com/p/flexlib/" 
+	bottom="0" top="0" left="0" right="0"
+	paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"
+	backgroundAlpha="0"
+	fontFamily="MyriadProBold"
+	creationComplete="build()" >
+	
+	<mx:Script>
+		<![CDATA[
+			
+			import mx.rpc.events.FaultEvent;
+			import classes.events.*;
+			import classes.GlobalVars;
+			import mx.events.ItemClickEvent;
+	        import classes.helpers.XmlHelper;
+	        import components.popUps.LoadPopUp;
+	        import mx.utils.ObjectProxy;
+	        import mx.controls.Alert;
+	        import mx.managers.PopUpManager;
+	        import components.analysis.*;
+			
+			private var _loadViewActive:Boolean;
+			private var _loadWin:LoadPopUp;
+			private var _Globals:GlobalVars;
+			private var _analysisXML:XML;
+			
+			private var _femaleFrequency:FemaleFrequency;
+			private var _homeRange:HomeRange;
+			private var _monthlyBoxesRfid:MonthlyBoxesRfid;
+			private var _monthlyAntennasRfid:MonthlyAntennasRfid;
+			
+            [Bindable]
+			[Embed(source="/assets/img/exclamation.png")]
+            private var alertIcon:Class;
+            
+			
+			
+			  			
+			/* -----------------------------------------------------------------------------------------------
+			initialize component
+			----------------------------------------------------------------------------------------------- */
+			private function build():void
+			{
+				
+				// init Objects
+				_femaleFrequency = new FemaleFrequency();
+				_homeRange = new HomeRange();
+				_monthlyBoxesRfid = new MonthlyBoxesRfid();
+				_monthlyAntennasRfid = new MonthlyAntennasRfid();
+				
+				// Getting analysis xml as data provider for the tree
+				_Globals = GlobalVars.getInstance();
+				_analysisXML = XmlHelper.getAnalysis();
+				menu_tree.dataProvider = _analysisXML;
+				
+				 
+				this.label = "Data Analysis"; 
+            	
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * Change Handler for the tree control. Add the component to the <code>content_box<code> based on the 
+			 * <code>comp</code> Attribute of the chosen tree leaf node 
+			 */
+			private function loadAnalysisComp(event:Event):void 
+			{
+				var compName:String = event.currentTarget.selectedItem.@comp;
+				
+				switch(compName) {
+					case "FemaleFrequency":
+					
+						if(content_box.numChildren > 0) {
+							content_box.removeChildAt(0);
+						}
+						content_box.addChild(_femaleFrequency);
+						
+					break;
+					case "HomeRange":
+					
+						if(content_box.numChildren > 0) {
+							content_box.removeChildAt(0);
+						}
+						content_box.addChild(_homeRange);
+						
+					break;
+					case "MonthlyBoxesRfid":
+					
+						if(content_box.numChildren > 0) {
+							content_box.removeChildAt(0);
+						}
+						content_box.addChild(_monthlyBoxesRfid);
+						
+					break;
+					case "MonthlyAntennasRfid":
+					
+						if(content_box.numChildren > 0) {
+							content_box.removeChildAt(0);
+						}
+						content_box.addChild(_monthlyAntennasRfid);
+						
+					break;
+					default:
+						menu_tree.expandChildrenOf(event.currentTarget.selectedItem, true);
+					break;
+				}
+            }
+		]]>
+	</mx:Script>
+
+	<!-- layout -->
+	<mx:HBox id="analysisCompsBox"  
+		width="100%" height="100%"
+		horizontalAlign="left" verticalAlign="top" verticalScrollPolicy="off"
+		paddingBottom="0" paddingTop="0" paddingLeft="0" paddingRight="0" horizontalGap="0"
+		backgroundAlpha="0"
+		backgroundColor="#CCCCCC"
+		horizontalScrollPolicy="off">
+		<mx:VBox paddingTop="5" paddingBottom="5" paddingLeft="0" paddingRight="0">
+			<mx:Tree id="menu_tree" labelField="@label" change="loadAnalysisComp(event)" 
+				width="150" height="100%" styleName="menuTree" showRoot="false"
+				folderClosedIcon="{null}" folderOpenIcon="{null}"/>	
+		</mx:VBox>
+		
+		<mx:VBox id="content_box" width="100%" height="100%"
+			backgroundColor="#FFFFFF" 
+			verticalAlign="middle" horizontalAlign="center">
+			
+			<mx:Label id="placeholder" text="Please select from the menu on the left side ..." styleName="genLabelDark" />
+			
+		</mx:VBox>
+	</mx:HBox>
+</mx:VBox>

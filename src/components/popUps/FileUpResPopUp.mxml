@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" width="300" height="300" title="Upload info" creationComplete="initComp()">
+	<mx:Script>
+	
+		<![CDATA[
+		
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/clear.png")]
+			private var clearIcon:Class;
+			
+			[Bindable]
+			private var _feedback:XMLList;
+			[Bindable]
+            private var _selectedItemFeedbackText:String;	
+			
+			
+			private function initComp():void {
+                
+                PopUpManager.centerPopUp(this);
+                infoGrid.selectedIndex = 0;
+            }
+            
+            /**
+            * The data to show the feedback for.
+            */ 
+            public function set feedback(feedback:XMLList):void
+            {
+            	_feedback = new XMLList();
+            	_feedback = feedback;
+            	infoGrid.selectedIndex = 0;
+            	_selectedItemFeedbackText = infoGrid.selectedItem.text;
+            }
+            
+		]]>
+	</mx:Script>
+		<mx:VBox width="100%" height="100%"  >
+			<mx:VDividedBox width="270" height="223">
+				<mx:DataGrid borderColor="#666666" id="infoGrid" width="100%" height="151"
+					horizontalGridLines="false" verticalGridLines="false"
+					dataProvider="{_feedback}"
+					showHeaders="false"
+					styleName="searchGrid"
+					change="_selectedItemFeedbackText=DataGrid(event.target).selectedItem.text"
+					>
+						<mx:columns>
+							<mx:DataGridColumn width="20" itemRenderer="components.renderers.CheckRenderer" />	
+							<mx:DataGridColumn dataField="@file" headerText="" />
+						</mx:columns>
+				</mx:DataGrid>
+				<mx:TextArea borderColor="#666666" color="#000000" cornerRadius="0" id="details" width="100%" height="146"
+					text="{_selectedItemFeedbackText}"
+				/>
+			</mx:VDividedBox>	
+			<mx:HBox width="100%">
+				<mx:Spacer width="100%" />
+				<mx:Button label="close" toolTip="close window" styleName="headerButton" id="closeBut" icon="{clearIcon}"
+					height="22" click="PopUpManager.removePopUp(this); parentApplication.alpha = 1;"/>	
+			</mx:HBox>
+		</mx:VBox>
+</mx:TitleWindow>

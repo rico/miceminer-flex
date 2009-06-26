@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	horizontalGap="5" 
+	verticalAlign="middle"
+	creationComplete="build()">
+
+    
+    <mx:Script>
+    	<![CDATA[
+    		import classes.helpers.DateHelpers;
+    		import mx.formatters.SwitchSymbolFormatter;
+    		import mx.events.ValidationResultEvent;
+    		import mx.events.NumericStepperEvent;
+	    	
+	    	[Bindable]
+	    	public var maxHour:Number;
+	    	[Bindable]
+	    	public var minHour:Number;
+	    	
+	    	[Bindable]
+	    	public var maxMinute:Number;
+	    	[Bindable]
+	    	public var minMinute:Number;
+	    	
+	    	[Bindable]
+	    	public var maxSecond:Number;
+	    	[Bindable]
+	    	public var minSecond:Number;
+	    	
+	    	[Bindable]
+	    	private var _hour:Number;
+	    	[Bindable]
+	    	private var _minute:Number;
+	    	[Bindable]
+	    	private var _second:Number;
+	    	
+	    	[Bindable]
+	    	public var textColor:uint;
+	    	
+	    	private var _value:uint; 
+	    	
+		    private var _focusArea:TextInput;
+		    private var _focusText:TextField;
+		    private var _currentStepValue:Number;
+		    
+		    /**
+			 * Dispatched when the "set" button is clicked.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="SetFilterValue", type="flash.events.Event")]
+		    
+		    /**
+		    * Creation Complete handler
+		    */
+		    private function build():void
+		    {
+		    	hourText.addEventListener(FocusEvent.FOCUS_IN, setTextFocus);
+		    	hourText.addEventListener(FocusEvent.FOCUS_OUT, formatText);
+		    	
+		    	minuteText.addEventListener(FocusEvent.FOCUS_IN, setTextFocus);
+		    	minuteText.addEventListener(FocusEvent.FOCUS_OUT, formatText);
+		    	
+		    	secondText.addEventListener(FocusEvent.FOCUS_IN, setTextFocus);
+		    	secondText.addEventListener(FocusEvent.FOCUS_OUT, formatText);
+		    			    	
+		    	addEventListener("SetFilterValue", formatAllText);
+		    	hourText.dispatchEvent(new MouseEvent(MouseEvent.MOUSE_UP));
+		    }
+		    
+		    /**
+		    * The time value to show in this component in seconds.
+		    */
+		    public function set valueInSec(seconds:uint):void
+		    {
+		    	
+		    	var timeObj:Object = DateHelpers.secToTimeObject(seconds);
+		    	
+		    	_hour = timeObj.hour;
+		    	_minute = timeObj.minute;
+		    	_second = timeObj.second;
+		    	
+		    	hourText.text = _hour.toString(); 
+		    	minuteText.text = _minute.toString();
+		    	secondText.text = _second.toString();
+		    	
+		    	validateHours(new Event(Event.CHANGE));
+		    	validateMinutes(new Event(Event.CHANGE));
+		    	validateSeconds(new Event(Event.CHANGE));
+		    	
+		    	dispatchEvent(new Event("SetFilterValue"));
+		    	
+		    }
+		    
+		    private function formatAllText(event:Event):void
+		    {
+		    	hourText.dispatchEvent(new FocusEvent(FocusEvent.FOCUS_OUT));
+		    	minuteText.dispatchEvent(new FocusEvent(FocusEvent.FOCUS_OUT));
+		    	secondText.dispatchEvent(new FocusEvent(FocusEvent.FOCUS_OUT));	
+		    }
+		    
+		     /**
+		    * @private
+		    */ 
+		    public function get valueInSec():uint
+		    {
+		    	validateHours(new Event(Event.CHANGE));
+		    	validateMinutes(new Event(Event.CHANGE));
+		    	validateSeconds(new Event(Event.CHANGE));
+		    	
+		    	return _hour*3600 + _minute*60 + _second;
+		    	
+		    }
+			
+			/**    	
+			 * Set text focus
+			 */
+	    	private function setTextFocus(event:Event):void
+	        {
+	            var newFocusArea:TextInput = event.currentTarget as TextInput;
+	            
+	            // removing change listener from old focus input
+	            switch(_focusArea) {
+	            	case hourText:
+	            		hourText.removeEventListener(Event.CHANGE, validateHours);
+	            	break;
+	            	case minuteText:
+	            		minuteText.removeEventListener(Event.CHANGE, validateMinutes);
+	            	break;
+	            	case secondText:
+	            		secondText.removeEventListener(Event.CHANGE, validateSeconds);
+	            	break;
+	            }
+	            
+	            switch(newFocusArea) {
+	            	case hourText:
+	            		
+	            		hourText.addEventListener(Event.CHANGE, validateHours);
+	            	break;
+	            	case minuteText:
+	            		
+	            		minuteText.addEventListener(Event.CHANGE, validateMinutes);
+	            	break;
+	            	case secondText:
+	            		
+	            		secondText.addEventListener(Event.CHANGE, validateSeconds);
+	            	break;
+	            }
+	            
+	            _focusArea = newFocusArea;
+	            _focusArea.setSelection(0, 2);
+	
+	        }
+	        
+	        /**
+	        * Validate hours value
+	        */
+	        private function validateHours(event:Event):void
+	        {
+	        	
+	        	_hour = Number(hourText.text);
+	        	
+	        	if(_hour > maxHour) {
+	               _hour = maxHour;
+	               validateMinutes(new Event(Event.CHANGE));
+	            } else if(_hour < minHour) {
+	                _hour = minHour;
+	                validateMinutes(new Event(Event.CHANGE));
+	            }
+	        }
+	        
+	        private function validateMinutes(event:Event):void
+	        {
+	        	
+	        	_minute = Number(minuteText.text);
+	        	
+	        	if(_hour == maxHour && _minute > maxMinute) {
+	        		_minute = maxMinute;
+	        		validateSeconds(new Event(Event.CHANGE));
+				} else if(_hour == minHour && _minute < minMinute) {
+					_minute = minMinute;
+            		validateSeconds(new Event(Event.CHANGE));	
+				} else if(_minute > 59) {
+					_minute = 59;
+	            } else if(_minute < 0) {
+	            	_minute = 0;
+	            }
+	            
+	            minuteText.text = _minute.toString();
+	        }
+	        
+	        private function validateSeconds(event:Event):void
+	        {
+	        	
+	        	_second = Number(secondText.text);
+	        	
+	        	if(_hour == maxHour && _minute == maxMinute && _second > maxSecond) {
+					_second = maxSecond;
+				} else if(_hour == minHour && _minute == minMinute && _second < minSecond) {
+	            	_second = minSecond;
+				} else if(_second > 59) {
+					_second = 59;
+	            } else if(_second < 0) {
+	            	_second = 0;
+	            }
+	            
+	            secondText.text = _second.toString();
+	        }
+	        
+	        private function formatText(event:Event):void
+	        {
+	        	var textInput:TextInput = TextInput(event.currentTarget);
+	        	
+	            if (textInput.text.length < 2) {
+	            	textInput.text = "0" + (textInput.text);
+	            } 
+	            
+	        }
+    	]]>
+    </mx:Script>
+    <mx:HBox
+    	horizontalGap="0" 
+		verticalAlign="middle"
+		height="20" 
+    	cornerRadius="5" backgroundColor="#FFFFFF" 
+    	borderColor="#f92f10" borderThickness="1" borderStyle="solid" >
+    	
+        <mx:TextInput id="hourText" height="20"  backgroundAlpha="0" color="{textColor}"
+			textAlign="center" maxChars="2"
+			borderStyle="none" width="23"
+			toolTip="Hours (hh)"
+            focusAlpha="0"/>
+                          
+		<mx:Text text=":" color="{textColor}"/>
+            
+        <mx:TextInput id="minuteText" height="20"  backgroundAlpha="0" color="{textColor}" 
+			textAlign="center" maxChars="2"
+			borderStyle="none" width="23"
+			toolTip="Minutes (mm)"
+			focusAlpha="0" />
+            
+		<mx:Text text=":"  color="{textColor}"/>
+            
+        <mx:TextInput id="secondText" height="20" backgroundAlpha="0" color="{textColor}"
+        	borderStyle="none" width="23"
+        	toolTip="Seconds (ss)"
+			textAlign="center" maxChars="2"
+			focusAlpha="0" />
+	</mx:HBox>
+	
+	<mx:Button id="setFilterButton" styleName="normButton"
+		height="20"
+		toolTip="Click to set the Filter value"
+		click="{dispatchEvent(new Event('SetFilterValue',true))}"  
+		label="Set" />	
+</mx:HBox>

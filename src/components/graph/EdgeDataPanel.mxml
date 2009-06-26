@@ -1,0 +1,888 @@
+<?xml version="1.0" encoding="utf-8"?>
+<components:ResizeableTitleWindow
+	xmlns:components = "classes.components.*"
+	xmlns:mx="http://www.adobe.com/2006/mxml"
+	creationComplete="build()"
+	layout="absolute"
+	showCloseButton="true"
+	currentState="gridView"
+	styleName="edgeData"
+	width="{Application.application.width * 0.75}"
+	height="{Application.application.height * 0.75}"
+	verticalScrollPolicy="off"
+	horizontalScrollPolicy="off">
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.helpers.ExcelExport;
+			import mx.controls.DataGrid;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.charts.HitData;
+			import mx.charts.events.LegendMouseEvent;
+			import classes.helpers.DataHelpers;
+			import mx.utils.ObjectProxy;
+			import mx.charts.chartClasses.Series;
+			import mx.events.ItemClickEvent;
+			import mx.collections.SortField;
+			import mx.collections.Sort;
+			import mx.events.AdvancedDataGridEvent;
+			import classes.GlobalVars;
+			import mx.messaging.config.ConfigMap;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridColumn;
+			import mx.utils.ObjectUtil;
+			import classes.helpers.DateHelpers;
+			import mx.core.UIComponent;
+			import mx.core.Application;
+			import mx.events.CloseEvent;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualEdge;
+			import mx.managers.PopUpManager;
+			import mx.collections.ArrayCollection;
+			
+			[Bindable]
+			private var _month:Number;
+			
+			[Bindable]
+			private var _year:Number;
+			
+			[Bindable]
+			[Embed(source="/assets/img/show_chart.png")]
+            private var ChartViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/show_grid.png")]
+            private var GridViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+            private var _edgeData:ArrayCollection;
+            
+            [Bindable]
+            private var _open:Boolean;
+            
+            [Bindable]
+            private var _minimized:Boolean = false;
+            
+            [Bindable]
+            private var _cachedHeight:int;
+            
+            [Bindable]
+            private var _titleBar:UIComponent;
+            
+            [Bindable]
+            private var _binnedData:ArrayCollection;
+            
+            [Bindable]
+            private var _node1Stringid:String;
+            private var _node1Sex:String;
+            
+            [Bindable]
+            private var _node2Stringid:String;
+            private var _node2Sex:String;
+            
+            [Bindable]
+			private var _typeExplanation:ObjectProxy;
+            
+            private var ConfigXML:XML;
+            private var _xmlConfig:XML;
+            private var _visible:Boolean;
+            private var _edgeInfo:VisualEdge;
+            private var _actualSortGridColumnIndex:uint;
+			private var _activeSortGridColumn:AdvancedDataGridColumn;
+			private var _dataGridColumns:Array;
+            
+            private function build():void
+            {
+            	
+            	addEventListener(CloseEvent.CLOSE, close);
+            	PopUpManager.centerPopUp(this);
+            	
+            	// title bar
+            	_titleBar = this.titleBar;
+            	_titleBar.doubleClickEnabled = true;
+            	_titleBar.toolTip = 'Click and hold to drag around, double-click to minmize the window';
+            	_titleBar.addEventListener(MouseEvent.DOUBLE_CLICK, resizeThis);
+            	
+            	// sort stuff
+            	dataGrid.addEventListener(AdvancedDataGridEvent.HEADER_RELEASE, sortInfo);
+            	
+            	_open = true;
+            	
+            	// apply grouping
+            	updateGridDataProvider();
+            	
+            	// set the title
+            	setTitle();
+
+            }
+            
+            /**
+            * The edge data.
+            */
+            public function get edgeInfo():VisualEdge
+            {
+            	return _edgeInfo;
+            }
+            
+            /**
+            * The year the edge data is show for
+            */
+            public function set year(year:Number):void
+            {
+            	_year = year;
+            }
+            
+            /**
+            * The month the edge data is shown for
+            */
+            public function set month(month:Number):void
+            {
+            	_month = month;
+            }
+            
+            /**
+            * @private
+            */
+            public function set edgeInfo(edge:VisualEdge):void
+            {
+            	
+            	_edgeInfo = edge;
+            	
+            	_node1Stringid = _edgeInfo.edge.node1.stringid;
+            	_node2Stringid = _edgeInfo.edge.node2.stringid;
+            	
+            	_typeExplanation = new ObjectProxy();
+            	_typeExplanation['typ_1'] = "meeting type 1: " + _node2Stringid + " entered the box while " + _node1Stringid + " was already in the box and " + _node2Stringid +
+            							" left the box while " + _node1Stringid + " was still in the box.";
+            	_typeExplanation['typ_2'] = "meeting type 2: " + _node1Stringid + " entered the box while " + _node2Stringid + " was already in the box and " + _node1Stringid +
+            							" left the box while " + _node2Stringid + " was still in the box.";
+            	_typeExplanation['typ_3'] = "meeting type 3: " + _node1Stringid + " entered the box after " + _node2Stringid + " and " + _node2Stringid +
+            							" left the box while " + _node1Stringid + " was still in the box.";
+            	_typeExplanation['typ_4'] = "meeting type 4: " + _node2Stringid + " entered the box after " + _node1Stringid + " and " + _node1Stringid +
+            							" left the box while " + _node2Stringid + " was still in the box."; 
+            	
+            	
+            	_node1Sex = '';
+            	_node2Sex = '';
+            	
+            	if(_edgeInfo.edge.node1.data.@sex != '') {
+            		_node1Sex = 	" (" + _edgeInfo.edge.node1.data.@sex + ")";
+            	}
+            	
+            	if(_edgeInfo.edge.node2.data.@sex != '') {
+            		_node2Sex = 	" (" + _edgeInfo.edge.node2.data.@sex + ")";
+            	}
+            	
+            	if(this.title != null) {
+            		setTitle();
+            	}
+            	
+            	
+            }
+            
+            /**
+            * Set the title.
+            */
+            private function setTitle():void
+            {
+            	// Setting title
+            	this.title = "Data for edge between node " + 
+            	  		_node1Stringid + _node1Sex + 
+            	  		" and node " + 
+            			_node2Stringid + _node2Sex;
+            }
+            
+            private function createColumns():Array
+            {
+            	
+            	// Getting configuration for the grid
+            	ConfigXML = GlobalVars.getInstance().ConfigXML;
+            	_xmlConfig = ConfigXML..flex..graph.edgeData.grid[0];
+            	
+            	var columns:Array = [];
+            	
+            	for each (var columnXML:XML in _xmlConfig.col) {
+            		var column:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+            		column.dataField = columnXML.@field;
+            		column.headerText = columnXML.@label;
+            		
+            		if(columnXML.@sort == 'numeric') {
+            			column.sortCompareFunction = numericSort;
+            		}
+            		
+            		/*if(columnXML.@field == 'dt_sec') {
+            			column.labelFunction = durationLabelFunction;
+            		}*/
+            		
+            		if(columnXML.@field == 'typ') {
+            			column.showDataTips = true;
+            			column.dataTipFunction = showTypeExplanation;
+            		}
+            		
+            		columns.push(column)
+            	}
+            	
+            	return columns;
+            	
+            	/*
+            	<mx:AdvancedDataGridColumn dataField="box" headerText="box" />
+					<mx:AdvancedDataGridColumn dataField="dt_sec" headerText="duration (hh:mm:ss)" labelFunction="durationLabelFunction" sortCompareFunction="numericSort"/>
+					<mx:AdvancedDataGridColumn dataField="from" headerText="from" />
+					<mx:AdvancedDataGridColumn dataField="to" headerText="to" />
+					<mx:AdvancedDataGridColumn dataField="typ" headerText="meeting type" sortCompareFunction="numericSort" showDataTips="true" dataTipFunction="showTypeExplanation"/>
+            	*/
+            	
+            	
+            }
+            
+            /**
+            * The dataset to handle.
+            */
+            public function get edgeData():ArrayCollection
+            {
+            	return _edgeData;
+            }
+            
+            /**
+            * @private
+            */
+            public function set edgeData(data:ArrayCollection):void
+            {
+            	if(data) {
+            		
+	            	if(_minimized) {
+	            		titleBar.dispatchEvent(new MouseEvent(MouseEvent.DOUBLE_CLICK));
+	            	}
+	            	
+	            	_edgeData = data;
+	            	updateBinning();
+	            	
+	            	updateSeries();	            	
+	            }
+	            
+	            
+	            updateGridDataProvider();
+	            updateChartDataProvider();
+	            
+            }
+            
+            /**
+            * PopUp is open or not.
+            */
+            public function get open():Boolean
+            {
+            	return _open;
+            }
+            
+            /**
+            * Close this popup.
+            */
+            public function close(event:CloseEvent):void
+            {
+            	_open = false;
+            	PopUpManager.removePopUp(this);
+            	
+            }
+            
+            /**
+            * Minimize / maximize window
+            */
+            private function resizeThis(event:MouseEvent):void
+            {
+            	if(_minimized) {
+            		
+            		maximizeBox.play([this]);
+            		showResizeHandler = true;
+            		addChild(mainBox);
+            		_minimized = false;
+            		_titleBar.toolTip = 'Click and hold to drag around, double-click to minmize the window';
+            		
+            	} else {
+            		_cachedHeight = this.height;
+            		minimizeBox.play([this]);
+            		showResizeHandler = false;
+            		_minimized = true;
+            		removeChild(mainBox);
+            		_titleBar.toolTip = 'Click and hold to drag around, double-click to maximize the window';
+					
+            	}
+            }
+            
+            /**
+            * Label function for the duration data
+            */
+            private function durationLabelFunction(item:Object, column:AdvancedDataGridColumn):String
+            {
+            	if(item.hasOwnProperty("dt_sec")) {
+            		var formattedSec:String = DateHelpers.secToTime(new Number(item.dt_sec), 'short'); 
+            		return formattedSec;
+            	}
+            	
+            	return '';
+            }
+            
+            /**
+			 * Sets the sort info for actual column.
+			 */
+			private function sortInfo(event:AdvancedDataGridEvent):void
+			{
+				_actualSortGridColumnIndex = event.columnIndex;
+				_activeSortGridColumn = dataGrid.columns[_actualSortGridColumnIndex];
+			}
+			
+			/**
+			 * Numeric sort function.
+			 * 
+			 */
+			private function numericSort(a:Object, b:Object):int
+			{
+				return ObjectUtil.numericCompare( 
+													new Number(a[_activeSortGridColumn.dataField]), 
+													new Number(b[_activeSortGridColumn.dataField]) 
+												); 
+			}
+			
+			/**
+			 * Data tip function for the 'typ' column in the ADG.
+			 */ 
+			private function showTypeExplanation(item:Object):String
+			{
+				if(item.hasOwnProperty("typ")) {
+					return _typeExplanation[ "typ_" + item.typ ];	
+				}
+				
+				return '';
+					
+			}
+			
+			/**
+			 * Change the state.
+			 */
+			 private function changeState(event:ItemClickEvent):void
+			 {
+			 	switch (event.index) 
+				{
+					case 0: // grid view
+						currentState = "gridView";
+					break;
+	    			case 1: // chart view
+						currentState = "chartView";
+	    			break;	
+					
+				}
+			 }
+			 
+			 /**
+			 * Set and refresh the dataProvider of the grid
+			 */
+			 private function updateGridDataProvider():void
+			 {
+			 	if(dataGrid) {
+			 		
+			 		dataGrid.columns = [];
+			 		
+			 		var columns:Array = createColumns();
+			 		
+				 	switch(grouping_combo.selectedItem.grouping) {
+				 		case boxEdgeDataGC:
+
+				 			var boxCountCol:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				 			boxCountCol.dataField = "data count";
+				 			boxCountCol.headerText = "data count for box";
+				 			boxCountCol.sortCompareFunction = numericSort;
+				 			boxCountCol.width = 100;
+ 							columns.splice(1,0,boxCountCol);
+				 		break;
+				 		case typEdgeDataGC:
+				 			
+				 			var typCountCol:AdvancedDataGridColumn = new AdvancedDataGridColumn();
+				 			typCountCol.dataField = "type count";
+				 			typCountCol.headerText = "data count for typ";
+				 			typCountCol.width = 100;
+				 			
+				 			// rearranging columns
+				 			var boxColumn:AdvancedDataGridColumn = columns.shift();
+				 			var typColumn:AdvancedDataGridColumn = columns.pop();
+				 			
+				 			columns.unshift(typColumn);
+				 			columns.push(boxColumn);
+				 			
+				 			columns.splice(1,0,typCountCol);
+				 			
+				 		break;
+				 		default:
+				 			dataGrid.columns = columns;
+				 		break;
+				 	}
+				 	
+				 	dataGrid.columns = columns;
+			 		dataGrid.dataProvider = grouping_combo.selectedItem.grouping;
+			 		grouping_combo.selectedItem.grouping.refresh();
+			 	}
+			 }
+			 
+			
+			//--------------------------------------------------//
+			// CHART STUFF
+			//--------------------------------------------------//
+			
+			 /**
+			 * Set and refresh the dataProvider of the grid
+			 */
+			 private function updateChartDataProvider():void
+			 {
+			 	if(dataChart) {
+				 	switch(chart_grouping_combo.selectedItem.columnSet) {
+				 		case "typSeries":
+ 							dataChart.series = [typSeries];
+				 		break;
+				 		case "boxSeries":
+				 			dataChart.series = [boxSeries];
+				 		break;
+				 		
+				 	}
+			 	}
+			 }
+			 
+			 /**
+			 * Updates the series for the chart 
+			 */
+			 private function updateSeries():void
+			 {
+			 	// typ series
+			 	typSeries.series = [];
+			 	var types:Array = ["1","2","3","4"];
+			 	
+			 	for each (var serial:String in types) {
+			 		var typColumnSeries:ColumnSeries = new ColumnSeries();
+			 		typColumnSeries.dataFunction = typDataFunction;
+	 				typColumnSeries.name = "typ_" + serial;
+	 				typColumnSeries.yField = "typ";
+	 				typColumnSeries.xField = "binnum";
+	 				typColumnSeries.displayName = "meeting type " + serial;
+	 				typSeries.series.push(typColumnSeries);
+			 		
+			 	}
+			 	
+			 	typSeries.type = "stacked";
+	 			typSeries.stack();
+	 			typSeries.invalidateStacking();
+			 	
+			 	// box series
+	 			boxSeries.series = [];
+	 			var boxes:Object = {sum: 0};
+	 			for each (var bin:Object in _binnedData) {
+	 				for (var boxId:String in bin.boxes) {
+	 					
+	 					var boxNum:String = boxId.split(/_/).pop();
+	 					
+	 					if( !boxes.hasOwnProperty(boxNum) ) {
+	 					
+			 				var boxColumnSeries:ColumnSeries = new ColumnSeries();
+			 				boxColumnSeries.dataFunction = boxDataFunction;
+			 				boxColumnSeries.name = boxId;
+			 				boxColumnSeries.yField = "box";
+			 				boxColumnSeries.xField = "binnum";
+			 				boxColumnSeries.displayName = boxId.replace('_', ' ');
+			 				 
+							boxSeries.series.push(boxColumnSeries);
+							boxes[boxNum] = boxNum;
+	 					}
+	 				}
+	 			}
+	 			
+	 			boxSeries.type = "stacked";
+	 			boxSeries.stack();
+	 			boxSeries.invalidateStacking();
+				dataChart.series = [boxSeries];
+			 }
+			
+			
+			
+			/**
+			 * Gets the requested typ values out of the nested data provider to display in the chart. 
+			 */
+			private function typDataFunction(series:Series, item:Object, fieldName:String):Object 
+			{
+				if(fieldName == 'yValue') {
+					return(item.types[series.name]);
+				} else if(fieldName == "xValue") {
+					return(item.binnum);
+				} else
+	              return null;
+		     }
+		     
+		     /**
+			 * Gets the requested box values out of the nested data provider to display in the chart. 
+			 */
+			private function boxDataFunction(series:Series, item:Object, fieldName:String):Object 
+			{
+				if(fieldName == 'yValue') {
+					return(item.boxes[series.name]);
+				} else if(fieldName == "xValue") {
+					return(item.binnum);
+				} else
+	              return null;
+		     }    
+		     
+		     private function legendItemOver(event:LegendMouseEvent):void 
+		     {
+		     	
+		     	if(_typeExplanation[event.item.source.name]) {
+		     		event.item.toolTip = _typeExplanation[event.item.source.name];
+		     	} else {
+		     		event.item.toolTip = '';
+		     	}	
+		     		
+		     }
+		     
+		     /**
+		     * Update the binning of the data when the user changes the bin number.
+		     */
+		     private function updateBinning():void
+		     {
+		     	var value:Number = 25;
+		     	if(binSlider) {
+		     		value = binSlider.value;
+		     	} 
+		     	
+		     	_binnedData = binData(_edgeData.source, 'dt_sec', binSlider.value)
+		     	_binnedData.refresh();
+		     	dataChart.dataProvider = _binnedData;
+		     }
+		     
+		     /**
+		     * Label function for the xAxis
+		     */
+		     private function xAxisLabelFunc(categoryValue:Object, previousCategoryValue:Object, axis:CategoryAxis, categoryItem:Object):String 
+		     {	
+		     	return categoryItem.binlabel;
+		     }
+		     
+		     /**
+			 * Custom data tip 
+			 */
+			private function custDataTipFunc(hd:HitData):String {
+
+				var dataTipString:String;
+				
+				var currElement:ColumnSeries = ColumnSeries(hd.element);
+				var currSeries:ColumnSeriesItem = ColumnSeriesItem(hd.chartItem);
+				
+				var value:Number = Number(currSeries.yValue) - Number(currSeries.minValue);
+				
+				var total:Number = 0;
+				if(currElement.yField == 'box') {
+					total = Number(currSeries.item.boxes.sum);
+				} else if (currElement.yField == 'typ') {
+					total = Number(currSeries.item.types.sum);
+				}
+				
+				var percent:Number =  Math.round( ((100 * Number(value)) / total) * 100) / 100;
+				
+				Math.round( ((100 * Number(value)) / total) * 100) / 100;
+				
+				dataTipString = "<b>" + currElement.legendData[0].label + "</b><br/>" + 
+						"<b>" + value + "</b> (" + percent + "%)<br/>" + 
+						"total: " +  total;
+				
+				return dataTipString;  
+   	  
+			}
+			
+		      /**
+			 * Group data based on a property and a number of bins.
+			 * 
+			 * @param data The data to group
+			 * @param prop The property of the objects in the <code>data</code> to apply the 'binning'. 
+			 * @param bins The number of bins to create
+			 */  
+			private function binData(data:Array, prop:String, bins:uint):ArrayCollection
+			{
+				data.sortOn(prop, Array.NUMERIC);
+				
+				var minVal:Number = data[0][prop];
+				var maxVal:Number = data[data.length-1][prop];
+				
+				var binnedData:Array = [];
+				var binSize:Number = Math.ceil( (maxVal - minVal) / bins );
+				
+				var step:int = minVal;
+				var binNum:uint = 0; 
+				
+				while( binNum < bins ) {
+					binnedData.push( {
+							binnum: (binNum + 1),
+							binlabel: DateHelpers.secToTime(step,'short') + ' - ' + DateHelpers.secToTime((step + binSize),'short'),
+							lower: step,
+							upper: (step + binSize),
+							types: {sum: 0},
+							boxes: {sum: 0},
+							data: []
+						} );
+					step += binSize;
+					binNum++;
+				}
+				
+				for each (var item:Object in data) {
+					var value:Number = new Number(item[prop]);
+					
+					var binObj:Object;
+					
+					// Assign the object to the right bin
+					if(value == minVal) {
+						binObj = binnedData[0];
+					} else {
+						var binToAssign:Number = Math.ceil( (value - minVal)/ binSize );
+						binObj = binnedData[binToAssign - 1];	
+					}
+					
+					// Rearrange data to be able to stack the the data by boxes and types in the chart
+					var typId:String = "typ_"+ item.typ;
+					var boxId:String = "box_" + item.box;
+					
+					if(!binObj.types.hasOwnProperty(typId)) {
+						binObj.types[typId] = 1;
+						
+					} else {
+						binObj.types[typId] += 1;
+					}
+					
+					binObj.types["sum"] += 1;
+					
+					
+					if(!binObj.boxes.hasOwnProperty(boxId)) {
+						binObj.boxes[boxId] = 1;
+					} else {
+						binObj.boxes[boxId] += 1;
+					}
+					
+					binObj.boxes["sum"] += 1;
+					
+					binObj.data.push(item);
+				}
+				
+				
+				binSizeLabel.text = DateHelpers.secToTime(binSize,'short');
+				return new ArrayCollection(binnedData);
+			}
+			
+			//--------------------------------------------------//
+			// EXPORT STUFF
+			//--------------------------------------------------//
+			/**
+			 * Export graph as a png file
+			 */
+			 private function exportToExcel():void
+			 {
+			 	// grid proprties
+			 	var gridId:String = ConfigXML..flex..graph.edgeData.grid[0].@id;
+			 	var filename:String = ConfigXML..flex..graph.edgeData.grid[0].@filename;
+			 	
+			 	var edgeDataDG:DataGrid = new DataGrid();
+			 	/*var exportData:ArrayCollection = new ArrayCollection(_edgeData.source);
+			 	for each (var data:Object in exportData) {
+			 		if( data.hasOwnProperty('dt_sec') && data.hasOwnProperty('dt') ) {
+			 			data['dt_sec'] = data['dt'];
+			 		}
+			 	}*/
+			 	
+			 	edgeDataDG.dataProvider = _edgeData;
+			 	
+			 	// exporter
+			 	var Export:ExcelExport = new ExcelExport(edgeDataDG, filename + '_' + _month + '_' + _year + '_' + _node1Stringid + '_' + _node2Stringid, gridId);
+
+			 }
+            
+		]]>
+	</mx:Script>
+	
+	<!-- States -->
+	<components:states>
+		<mx:State name="chartView">
+			<mx:RemoveChild target="{gridBox}" />
+			<mx:RemoveChild target="{exportExcelBut}" />
+			<mx:SetProperty target="{chartBox}" name="width" value="100%" />
+		</mx:State>
+		<mx:State name="gridView" >
+			<mx:RemoveChild target="{chartBox}" />
+		</mx:State>
+	</components:states>
+	
+	<!-- Effects -->
+	<mx:Resize id="minimizeBox" heightFrom="{this.height}" heightTo="{_titleBar.height}" duration="500"/>
+	<mx:Resize id="maximizeBox" heightFrom="{this.height}" heightTo="{_cachedHeight}" duration="500"/>
+	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
+	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
+	<mx:SeriesInterpolate id="interpolEff" duration="1000" elementOffset="0" minimumElementDuration="20" />
+	
+	<!-- formatter -->
+	<mx:NumberFormatter id="durationFormatter" precision="0" rounding="nearest" />
+	
+	<!-- Groupings -->
+	<mx:GroupingCollection id="boxEdgeDataGC" source="{_edgeData}">
+		<mx:Grouping id="boxEdgeDataGrouping">
+			<mx:GroupingField name="box">
+				<mx:summaries>
+ 					<mx:SummaryRow summaryPlacement="group">
+             			<mx:fields>
+             				<mx:SummaryField dataField="box" label="data count" operation="COUNT"/>
+                 			<mx:SummaryField dataField="dt_sec" operation="AVG"/>
+ 						</mx:fields>
+   					</mx:SummaryRow>
+ 				</mx:summaries>
+ 			</mx:GroupingField>
+		</mx:Grouping>
+	</mx:GroupingCollection>
+	
+	<!-- Chart Series -->
+	<mx:ColumnSet type="stacked" id="typSeries" />
+    <mx:ColumnSet type="stacked" id="boxSeries" />
+	
+	<mx:GroupingCollection id="typEdgeDataGC" source="{_edgeData}">
+		<mx:Grouping id="typEdgeDataGrouping">
+			<mx:GroupingField name="typ">
+				<mx:summaries>
+ 					<mx:SummaryRow summaryPlacement="group">
+             			<mx:fields>
+             				<mx:SummaryField dataField="typ" label="type count" operation="COUNT"/>
+                 			<mx:SummaryField dataField="dt_sec" operation="AVG"/>
+ 						</mx:fields>
+   					</mx:SummaryRow>
+ 				</mx:summaries>
+ 			</mx:GroupingField>
+		</mx:Grouping>
+	</mx:GroupingCollection>
+	
+	<mx:VBox id="mainBox" top="0" bottom="30" left="0" right="0" removedEffect="{fadeOut}" addedEffect="{fadeIn}"
+		backgroundAlpha="0" 
+		paddingBottom="3">
+		<!--- Grid view -->
+		<mx:VBox id="gridBox" width="100%" height="100%" backgroundAlpha="0">
+		
+			<mx:HBox id="gridHeaderBox" width="100%" backgroundAlpha="0" styleName="controlPartHeader" paddingLeft="0" verticalAlign="middle">
+				<mx:Label text="Choose grouping:"  styleName="graphControlLabel" />
+				<mx:ComboBox id="grouping_combo" height="18" styleName="analysisCombo" labelField="label"
+					toolTip="Select the field the data in the grid is grouped on" change="updateGridDataProvider()">
+					<mx:dataProvider>
+						<mx:Object label="Group data by box" grouping="{boxEdgeDataGC}"/>
+						<mx:Object label="Group data by meeting typ" grouping="{typEdgeDataGC}"/>
+						<mx:Object label="No Grouping" grouping="{_edgeData}"/>
+					</mx:dataProvider>
+				</mx:ComboBox>
+			</mx:HBox>
+			
+			<mx:AdvancedDataGrid id="dataGrid" width="100%" height="100%"
+				styleName="graphGrid"
+				displayDisclosureIcon="true"
+				defaultLeafIcon="{null}"
+				folderOpenIcon="{null}"
+				folderClosedIcon="{null}" />
+		</mx:VBox>
+		<!-- chart View -->
+		<mx:VBox id="chartBox" width="100%" height="100%" backgroundAlpha="0">
+			<mx:HBox id="chartHeaderBox" width="100%" backgroundAlpha="0" styleName="controlPartHeader" paddingLeft="0" verticalAlign="middle">
+				<mx:Label text="Choose grouping:"  styleName="graphControlLabel" />
+				<mx:ComboBox id="chart_grouping_combo" height="18" styleName="analysisCombo" labelField="label"
+					toolTip="Select the field the data for the chart is grouped on" change="updateChartDataProvider()">
+					<mx:dataProvider>
+						<mx:Object label="Group data by typ" columnSet="typSeries"/>
+						<mx:Object label="Group data by box" columnSet="boxSeries" />
+					</mx:dataProvider>
+				</mx:ComboBox>
+				<mx:Label text="Number of bins:" styleName="graphControlLabel" />
+				<mx:Label styleName="graphControlLabel" text="{binSlider.value}" fontWeight="bold" />
+				<mx:HSlider
+					tickInterval="1"
+					width="200"
+					id="binSlider"
+					minimum="10"
+					maximum="40"
+					liveDragging="false"
+					value="25"
+					snapInterval="1"
+					change="updateBinning()"
+					toolTip="Drag slider to adjust number of bins"
+					styleName="filterSlider"
+				/>
+				<mx:Spacer width="20" />
+				<mx:Label text="Bin size:" styleName="graphControlLabel" />
+				<mx:Label id="binSizeLabel" styleName="graphControlLabel" fontWeight="bold"/>
+			</mx:HBox>
+			<mx:ColumnChart id="dataChart" width="100%" height="100%"
+				styleName="edgeDataChart"
+				showDataTips="true"
+				columnWidthRatio="0.5"
+				dataTipFunction="custDataTipFunc"
+				axisTitleStyleName="edgeChartHorzAxisStyle"
+				>
+
+				<mx:horizontalAxis>
+		           <mx:CategoryAxis
+		           		id="binAxis"
+		           		title="time"
+		                categoryField="binnum"
+		                labelFunction="xAxisLabelFunc"
+		           />
+		        </mx:horizontalAxis>
+		        <mx:verticalAxis>
+					<mx:LinearAxis id="countAxis" 
+						padding="0" />
+				</mx:verticalAxis>
+		  	     
+		        <mx:horizontalAxisRenderers>
+           			<mx:AxisRenderer labelRotation="45" axis="{binAxis}">
+           				<mx:axisStroke>
+		                    <mx:Stroke color="#FFFFFF" weight="4" alpha="0.75" caps="square"/>
+		                </mx:axisStroke>
+		                <mx:tickStroke>
+		                    <mx:Stroke color="#FFFFFF" weight="1" alpha="1" caps="square"/>
+		                </mx:tickStroke>
+           			</mx:AxisRenderer>
+        		</mx:horizontalAxisRenderers>
+        		<mx:verticalAxisRenderers>
+        			<mx:AxisRenderer axis="{countAxis}">
+           				<mx:axisStroke>
+		                    <mx:Stroke color="#FFFFFF" weight="4" alpha="0.75" caps="square"/>
+		                </mx:axisStroke>
+		                <mx:tickStroke>
+		                    <mx:Stroke color="#FFFFFF" weight="1" alpha="1" caps="square"/>
+		                </mx:tickStroke>
+           			</mx:AxisRenderer>
+        		</mx:verticalAxisRenderers>
+			</mx:ColumnChart>
+			<mx:VBox id="legendBox" width="100%" backgroundAlpha="0" paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0">
+				<mx:Legend id="chartLegend" dataProvider="{dataChart}" itemMouseOver="legendItemOver(event)"
+					markerHeight="15" markerWidth="15" 
+					direction="horizontal" color="#FFFFFF" fontFamily="Myriad Pro" fontSize="11"/>	
+			</mx:VBox>
+		</mx:VBox>
+	</mx:VBox>
+	
+	<!-- footer -->
+	<mx:HBox id="footer_box" width="100%" bottom="0" height="30" addedEffect="{fadeIn}" removedEffect="{fadeOut}"
+		borderStyle="solid"
+		borderThickness="1"
+		borderColor="#FFFFFF"
+		borderSides="top"
+		backgroundAlpha="0"
+		paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" verticalAlign="middle">
+		
+		<mx:ToggleButtonBar id="changeViewButtons" buttonHeight="20" 
+			itemClick="changeState(event)"
+			styleName="CompButtonBar">
+			
+			<mx:Object id="gridViewBut" icon="{GridViewIcon}" toolTip="click for grid view" />
+			<mx:Object id="chartViewBut" icon="{ChartViewIcon}" toolTip="click for chart view"/>
+			
+		</mx:ToggleButtonBar>
+		<mx:Spacer width="100%" />
+		
+		<mx:Button id="exportExcelBut" icon="{exportExcelIcon}" label="Export to Excel" labelPlacement="right" height="22" 
+			toolTip="Export current table content to Excel" styleName="normButton"
+			click="exportToExcel()"/>
+	</mx:HBox>	
+</components:ResizeableTitleWindow>

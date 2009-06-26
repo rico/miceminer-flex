@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	width="250" height="50" styleName="noDataPopUp"  
+	creationComplete="initComp()"
+	>
+
+	<mx:Script>
+		<![CDATA[
+			import mx.events.EffectEvent;
+		
+			import classes.events.*;
+			import mx.managers.PopUpManager;
+			import flash.utils.Timer;
+			
+			[Bindable]
+			public var noDataLabel:String;
+			
+			private function initComp():void
+			{
+				PopUpManager.centerPopUp(this);
+				var myTimer:Timer = new Timer(2000, 1);
+            	myTimer.addEventListener("timerComplete", closeThis);
+            	myTimer.start();
+			}
+			
+			private function closeThis(event:TimerEvent):void
+			{
+				myFade.addEventListener(EffectEvent.EFFECT_END,removeThis);
+				myFade.play([this],true);
+				
+			}
+			
+			private function removeThis(event:EffectEvent):void
+			{
+				PopUpManager.removePopUp(this);
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Fade id="myFade" alphaFrom="0" alphaTo="1.0" duration="300"/>
+	
+	<mx:VBox width="100%" height="100%" verticalAlign="middle" horizontalAlign="center" backgroundAlpha="0.5">
+		<mx:Text text="{noDataLabel}" fontSize="11" fontWeight="bold" color="#FFFFFF"/>
+	</mx:VBox>
+
+</mx:Canvas>

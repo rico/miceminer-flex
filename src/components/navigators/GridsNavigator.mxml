@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:grid="components.grids.*"
+	xmlns:flexlib="http://code.google.com/p/flexlib/" 
+	xmlns:other="components.other.*"
+	backgroundAlpha="0" left="0" right="0" height="100%" 
+	creationComplete="initComp()" xmlns:components="classes.components.*">
+
+	<mx:Script>
+		<![CDATA[
+			import mx.graphics.ImageSnapshot;
+			import mx.events.FlexEvent;
+			import mx.controls.Image;
+			import classes.datastructures.Item;
+			import components.popUps.NoDataPopUp;
+			import classes.helpers.DbDateValidator;
+			import components.charts.ChartsComponent;
+			import mx.core.Container;
+			import mx.core.UIComponent;
+			import mx.events.IndexChangedEvent;
+			import mx.events.DataGridEvent;
+			import mx.controls.DataGrid;
+			import flexlib.controls.SuperTabBar;
+			import flexlib.controls.tabBarClasses.SuperTab;
+	       	import mx.collections.ArrayCollection;
+	        import mx.managers.FocusManager;
+	        import classes.GlobalVars;
+	        import classes.components.Grid;
+	        import classes.events.*;
+	        import mx.utils.ObjectProxy;
+	        import classes.helpers.*;
+	        import mx.managers.PopUpManager;
+	        import mx.events.ItemClickEvent;
+	        
+	        /* -----------------------------------------------------------------------------------------------
+			 Variables
+			----------------------------------------------------------------------------------------------- */
+			[Bindable]
+			public var isDataComp:Boolean;
+			public var isChartView:Boolean = false;
+					
+		    private var _searchComps:Array = [];			// grids to add
+	        private var dateFor:String;
+			private var _tabChilds:Boolean = false;  // does the navigators have child comps
+			private var dataInfo:ObjectProxy;
+			private var gridsAdded:int;
+			private var _selectedChildIndex:int;
+			private var _divx:int;
+			private var _hasFocus:Boolean;
+			private var _cachedView:String;
+			private var _enableGetData:Boolean;
+			private var _selectedItem:Item;
+			
+			[Bindable]
+			private var _enableJumpToItem:Boolean;
+			
+			[Bindable]
+			private var _closable:Boolean;
+			
+			[Bindable]
+			private var _selSearchComp:Grid;
+			
+			[Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/show_chart.png")]
+            private var ChartViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/show_grid.png")]
+            private var GridViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/nav/split_view.png")]
+            private var splitViewIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/close_small.png")]
+        	private var closeIcon:Class;
+        	
+        	[Bindable]
+			[Embed(source="/assets/img/close_small_over.png")]
+        	private var closeOverIcon:Class;
+        	
+        	[Bindable]
+			[Embed(source="/assets/img/scroll_to.png")]
+        	private var scrollToIcon:Class;
+        	
+        	[Bindable]
+			[Embed(source="/assets/img/scroll_to_over.png")]
+        	private var scrollToOverIcon:Class;
+        
+            [Bindable]
+			[Embed(source="/assets/img/pictureExport.png")]
+            private var picExportIcon:Class;
+			
+			
+			
+			/* -----------------------------------------------------------------------------------------------
+			 INIT COMPONENT
+			----------------------------------------------------------------------------------------------- */
+			
+			private function initComp():void
+			{
+				
+				//this.addEventListener("gridAdded", gridAdded);
+				//_selSearchComp = new Grid();
+				this.addEventListener("requestViewChart", viewRequested);
+				this.addEventListener("restoreView", viewRequested);
+				
+
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			 TabChanged
+			----------------------------------------------------------------------------------------------- */
+			
+			/**
+			 * Called when the tab of the <code>Supernavigatorsigator</code> has changed through a <emp>Mouse Click<emp> on the <emp>tab header</emp>.
+			 */
+			private function tabChanged(event:IndexChangedEvent):void
+	        {
+				changeTabFocus(navigatorsComp.selectedChild);       
+	        	event.stopImmediatePropagation();
+	        }
+	        
+	        /**
+			 * Called when the tab of the <code>Supernavigatorsigator</code> has changed through a <emp>Mouse Click<emp> on the navigators frontmost <emp>content area</emp>.
+			 * This is needed cause have two <code>Supernavigatorsigator</code>'s when we are in split view. So the user is able change the <code>Supernavigatorsigator</code>
+			 *  through a click on the   
+			
+			 */
+	        private function tabGotClickFocus(event:MouseEvent):void
+	        {
+	        	
+	        	changeTabFocus(event.currentTarget.selectedChild);
+	        	event.stopImmediatePropagation();	        	
+	        }
+	        
+	        /**
+	         * Keeps track of the selected tab in the <code>navigatorsigator</code>.
+			 */ 
+	        public function changeTabFocus(selectedObject:DisplayObject = null):void
+	        {
+	        	
+	        	if(_tabChilds) {
+		        	if(selectedObject != null) {
+		        		
+		        		_selSearchComp = selectedObject as Grid;
+						_selectedChildIndex = navigatorsComp.getChildIndex(_selSearchComp);
+						navigatorsComp.selectedIndex = _selectedChildIndex;
+		        	} else { // no selected object
+		        		
+		        		_selSearchComp = navigatorsComp.getChildAt(0) as Grid;
+		        		navigatorsComp.selectedIndex = 0;
+		        		_selectedChildIndex = 0;
+	
+		        	}
+		        	
+		        	setButtonBar();
+		        	_selSearchComp.focus();
+			        	
+        			//trace("[" + this.name + "]: Tab changed to grid: " + _selSearchComp.name + " has charts: " + _selSearchComp.charts.toString());
+	        	}	
+	        }
+	        
+			/**
+			 * Setter function for focus
+			 * 
+			 * <p>Changes the <code>borderStyle</code> to orange for visual feedback when the component got focus,
+			 * configures <i>event listeners</i>.</p>
+			 */ 
+	        public function set hasFocus(value:Boolean):void
+	        {
+	        	_hasFocus = value;
+	        	
+	        	if(_hasFocus){
+	        		if ( navigatorsComp.hasEventListener("click") ) {
+	        			navigatorsComp.removeEventListener(MouseEvent.CLICK, tabGotClickFocus);
+	        		}
+	        		navigatorsCompBorder.setStyle("borderColor","#FA6706");
+	        		exportExcelBut.enabled = true;
+	        		exportExcelBut.alpha = 1;
+	        	
+	        	} else {
+	        		navigatorsComp.addEventListener(MouseEvent.CLICK, tabGotClickFocus);
+	        		navigatorsCompBorder.setStyle("borderColor","#AAAAAA");
+	        		exportExcelBut.enabled = false;
+	        		exportExcelBut.alpha = 0.3;
+	        	}
+	        	
+	        }
+	        
+	        public function get hasFocus():Boolean
+	        {
+	        	return _hasFocus;
+	        }
+	        
+	        
+	    	        
+			/* -----------------------------------------------------------------------------------------------
+			 Build _searchComps
+			----------------------------------------------------------------------------------------------- */
+			/**
+			* Builds the <code>Grid</code>'s based on the information in the xml configuration file and add them to the <code>SuperTabNavigator</code>. 
+			 * <ul>
+			 * <li>Sets all needed properties for the <code>searchGrid</code></li>
+			 * <li>Adds the appropriate event listeners for data or items components</li>
+			 * </ul>
+			 * 
+			 * @see components.grids.Grid
+			 * @see classes.GlobalVars
+			 */ 
+			public function build(gridsXML:XMLList, item:Item = null):void
+			{
+	      
+				//this.dateFor = gridsXML..@field;
+				//this.dateRange = dataInfo.dateRange;
+	        	_searchComps = [];
+	        	
+	        	reset();
+	        	
+				// creating a data grids (from xml config)
+	        	for each(var gridXML:XML in gridsXML) {
+					var grid:Grid = new Grid(gridXML, item);
+					grid.parentGridsNavigator = this;
+					grid.enableGetData = _enableGetData;
+					_searchComps.push( grid );		// add grid to the grids array
+					
+	    		}
+	    		
+	    		//trace("[gridsComp] built grids: " + this.id);
+				
+			}	        
+	         
+		    /* -----------------------------------------------------------------------------------------------
+			 Attach data to grids
+			----------------------------------------------------------------------------------------------- */
+			/**
+			* Called from a <code>DataMinerComponent</code>  when the loading of data has finished.
+			* <p>Takes the <code>dbData</code> array, and then searches in the <code>_searchComps</code> array for the matching <code>Grid</code>.</p>
+			* <p>Once found the <code>dbData</code> element is an <code>ArrayCollection</code> which is the <i>dataProvider</i> for the <code>Grid</code>.</p>
+			*/ 
+	        public function attachSearchComps(dbData:Array):void
+	       	{
+	       		
+				navigatorsCompBorder.addChildAt(navigatorsComp,0);
+				navigatorsCompBorder.addChildAt(footer_box,1);
+				navigatorsComp.selectedIndex = -1;
+				navigatorsComp.invalidateDisplayList();
+				
+				addEventListener(CompBuiltEvent.GRID, searchCompAdded);
+				gridsAdded = 0;
+	        	for each (var sc:Grid in _searchComps) {
+	        		sc.dbData = dbData[sc.id];
+	        		
+	        		// check if we have data to show
+	        		if(sc.dbData.length > 0) {
+	        			navigatorsComp.addChild(sc);
+	        			gridsAdded += 1;
+	        		} 
+	        		
+		        }
+		        
+		        // check if we have data
+		        if(gridsAdded == 0) {
+		        	gridsAdded = 1;
+		        	_tabChilds = false;
+	        		navigatorsComp.removeAllChildren();
+		        	dispatchEvent(new CompBuiltEvent(CompBuiltEvent.GRID, this));
+		        	var zeroDataPop:NoDataPopUp = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false));
+					zeroDataPop.noDataLabel = "No data for parameters" ;
+	        		
+		        } else {
+					_tabChilds = true;
+		        	changeTabFocus();		        	
+		        }
+		        
+
+		        
+		        //dispatchEvent(new CompBuiltEvent("searchCompTab",this.name));
+		        	//trace("[gridsComp] attached: " + this.id + " selIndex: " + navigatorsComp.selectedIndex.toString());
+		        //this.addEventListener(Event
+	        }
+	        
+	        private function searchCompAdded(event:CompBuiltEvent):void
+	        {
+	        	gridsAdded -= 1;
+	        	if(gridsAdded == 0) {
+	        		removeEventListener(CompBuiltEvent.GRID,searchCompAdded);
+	        		dispatchEvent(new CompBuiltEvent(CompBuiltEvent.GRIDS_NAVIGATOR, this));
+	        		
+	        	}
+	        	
+	        	event.stopImmediatePropagation();
+	        }
+	        
+
+			/**
+			 * Getter function for selectedChildIndex
+			 */
+			 public function get selectedChildIndex():int
+			 {
+			 	return _selectedChildIndex;
+			 }
+			 
+			 /**
+			 * Getter function for the <code>searchComps</code>
+			 */
+			 public function get searchComps():Array
+			 {
+			 	return _searchComps;
+			 } 
+			 
+			 /**
+			 * Indicates if the tab navigator has childs (data)
+			 */
+			 public function get tabChilds():Boolean
+			 {
+			 	return _tabChilds;
+			 }
+			 
+			 /**
+			 * Resets the component.
+			 * 
+			 */
+			 public function reset():void
+			 {
+			 	if(_tabChilds) {
+	        		
+	        		navigatorsComp.removeAllChildren();
+	        		navigatorsCompBorder.removeChild(navigatorsComp);
+	        		navigatorsCompBorder.removeChild(footer_box);
+	        		_tabChilds = false;
+	        	}	
+			 }
+			 
+			/**
+			 * Sets the <code>enableGetData</code> property of the <code>Grid</code> which is displayed in this component to the passed value. 
+			 * 
+			 * @see classes.components.grid
+			 */
+			public function set enableGetData(enable:Boolean):void
+			{
+				_enableGetData = enable;
+			}
+			
+			/**
+			 * If true, shows a close button in the top right corner of the component.
+			 * 
+			 * <p>If the button is clicked by the user, a <code>RequestViewEvent.ITEMS_VIEW</code> is dispatched.</code> 
+			 */
+			public function set closable(close:Boolean):void
+			{
+				try {
+					if( _enableJumpToItem && close) {
+						throw new Error("Can't have enableJumpToItem and closable enabled at the same time.");	
+					} else {
+						_closable = close;
+					} 
+				} catch(e:Error) {
+					trace(e.message.toString());
+				}
+			}
+			
+			/**
+			 * Selects the <code>Item</code> in the active <code>Grid</code>.
+			 */
+			public function set selectedItem(item:Item):void
+			{
+				_selSearchComp.selectedItem = item;
+				_selectedItem = item;
+			
+				enableJumpBut = true;	
+				
+			}
+			
+			/**
+			 * Set to true to show an enable a button to jump to the item in the <code>Grid.searchGrid</code> the data is shown for in the data <code>GridNavigator</code>.
+			 */
+			public function set enableJumpBut(enable:Boolean):void
+			{
+				if(enable && _selectedItem) {
+					jumpToBut.enabled = true;
+					jumpToBut.visible = true;
+				} else {
+					jumpToBut.enabled = false;
+					jumpToBut.visible = false;
+				}	
+			}
+
+			/* --------------------------------------------------------------
+			
+				VIEW STATE HANDLING
+				
+			-------------------------------------------------------------- */
+			
+			// handling button bar clicks
+			private function buttonBarClick(event:ItemClickEvent):void
+			{
+				if(!hasFocus) {
+					_selSearchComp.focus();
+				}
+				
+				switch (event.index) 
+				{
+					case 0: // grid view
+						_selSearchComp.currentState = "gridView";
+						exportToPng.visible = false;
+						exportToPng.enabled = false;
+					break;
+	    			case 1: // split view
+						_selSearchComp.currentState = "splitView";
+						exportToPng.visible = true;
+						exportToPng.enabled = true;
+	    			break;	
+					case 2: // chartView
+						_selSearchComp.currentState = "chartView";
+						exportToPng.visible = true;
+						exportToPng.enabled = true;
+	    			break;
+				}
+			}
+			
+			// set button for view
+			private function setButtonBar():void
+			{
+				switch (_selSearchComp.currentState) 
+				{
+					case "gridView": // grid view
+						changeViewButtons.selectedIndex = 0;
+						exportToPng.visible = false;
+						exportToPng.enabled = false;	
+					break;
+	    			case "splitView": // split view
+						changeViewButtons.selectedIndex = 1;
+						exportToPng.visible = true;
+						exportToPng.enabled = true;
+	    			break;	
+					case "chartView": // chartView
+						changeViewButtons.selectedIndex = 2;
+						exportToPng.visible = true;
+						exportToPng.enabled = true;
+	    			break;
+				}
+			}
+			
+			/**
+			 * @private
+			 * Set the desired view or switch back to the restored view
+			 */
+			private function viewRequested(event:RequestViewEvent):void
+			{
+				switch(event.type) {
+					case RequestViewEvent.CHART_VIEW:
+						_cachedView = _selSearchComp.currentState;
+						_selSearchComp.currentState = "chartView";
+						event.stopImmediatePropagation();	
+					break;
+					case RequestViewEvent.RESTORE_VIEW:
+						_selSearchComp.currentState = _cachedView;
+					break;
+				}
+				
+				setButtonBar();
+							
+			}
+			 
+			 /**
+			 * Export active <code>searchComp</code> to excel.
+			 */  
+			private function exportData(event:MouseEvent):void
+			{
+				if(!hasFocus) {
+					_selSearchComp.focus();
+					
+				}
+				
+				_selSearchComp.exportDataToExcel();
+								  
+			}
+			
+			 /**
+			 * Export chart as a png
+			 */  
+			private function exportPng():void
+			{
+				if(!hasFocus) {
+					_selSearchComp.focus();
+				}
+				var filename:String;
+				if( _selSearchComp.item != null) {
+					filename = _selSearchComp.filename + '_' + _selSearchComp.item.id +  '_chart';
+				} else {
+					filename = _selSearchComp.filename + '_chart';
+				}
+				
+				var exportPng:PngExport = new PngExport(ImageSnapshot.captureImage(_selSearchComp.searchCharts,300), filename);
+								  
+			}
+			
+			/**
+			 * @private
+			 * dispatch event to close the data tab nav
+			 */
+			private function closeDataTabNav():void
+			{
+				dispatchEvent( new RequestViewEvent(RequestViewEvent.DATA_CLOSED) );
+			}
+	      	        
+		]]>    
+		
+	</mx:Script>
+	
+	<!-- <mx:Fade id="showEff" alphaFrom="0" alphaTo="1" duration="1750" target="{navigatorsComp}"/> -->
+	
+	<!-- Layout -->
+	<mx:VBox width="100%" height="100%" id="navigatorsCompBorder" styleName="compBox"
+		borderStyle="solid"
+		borderThickness="1">
+			
+		<components:CustSuperTabNav	id="navigatorsComp" styleName="navigatorsComp"
+			backgroundColor="#dcdcdc"
+			dragEnabled="false" dropEnabled="false"
+			closePolicy="{SuperTab.CLOSE_NEVER}"
+			popUpButtonPolicy="off"
+			change="tabChanged(event)"
+			width="100%" height="100%" />
+		 
+		<mx:HBox id="footer_box" width="100%"
+			paddingLeft="5" paddingRight="5" paddingTop="5" paddingBottom="5" verticalAlign="middle">
+			
+			<mx:ToggleButtonBar id="changeViewButtons" buttonHeight="20" 
+				enabled="{_selSearchComp.searchCharts.hasCharts}"
+				alpha="{_selSearchComp.searchCharts.hasCharts ? 1 : 0.3}" 
+				itemClick="buttonBarClick(event)"
+				styleName="CompButtonBar">
+				
+				<mx:Object id="gridViewBut" icon="{GridViewIcon}" toolTip="Table View" />
+				<mx:Object id="splitViewBut" icon="{splitViewIcon}" toolTip="Splitted View" />
+				<mx:Object id="chartViewBut" icon="{ChartViewIcon}" toolTip="Chart View"/>
+			</mx:ToggleButtonBar>
+			<mx:Spacer width="100%" />
+			<mx:Button id="exportToPng" label="Export Chart as Image" styleName="normButton" icon="{picExportIcon}" height="22"
+				visible="false" enabled="false"
+				toolTip="Export chart as an image file"
+				click="exportPng()"
+				 />
+			<mx:Button id="exportExcelBut" icon="{exportExcelIcon}" label="Export to Excel" labelPlacement="right" height="22" 
+				toolTip="Export current table content to Excel" styleName="normButton"
+				click="exportData(event)"/>
+		</mx:HBox>	
+	</mx:VBox>
+	<mx:LinkButton id="closeBut" 
+			right="1"
+			top="1"
+			height="19"
+			labelPlacement="left"
+			label="close"
+			toolTip="Click to close this navigator."
+			icon="{closeIcon}"
+			overIcon="{closeOverIcon}"  
+			rollOverColor="#fa6706"
+			color="#FFFFFF"
+			textRollOverColor="#FFFFFF"
+			selectionColor="#fa6706"
+			cornerRadius="0"
+			click="closeDataTabNav()"
+			fontFamily="MyriadPro"
+			fontWeight="normal"
+			enabled="{_closable}"
+			visible="{_closable}"/>
+			
+	<mx:LinkButton id="jumpToBut" 
+			right="1"
+			top="1"
+			height="19"
+			labelPlacement="left"
+			label="scroll to item"
+			toolTip="Click to scroll to the item the data is shown for."
+			icon="{scrollToIcon}"
+			overIcon="{scrollToOverIcon}"  
+			rollOverColor="#fa6706"
+			color="#FFFFFF"
+			textRollOverColor="#FFFFFF"
+			selectionColor="#fa6706"
+			cornerRadius="0"
+			click="{selectedItem = _selectedItem}"
+			fontFamily="MyriadPro"
+			fontWeight="normal"
+			visible="false"
+			enabled="false"/>				
+</mx:Canvas>

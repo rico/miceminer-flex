@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	horizontalAlign="center"
+	paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"
+	creationComplete="build()">
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.events.LoadDataEvent;
+			import classes.datastructures.Item;
+			import classes.events.DirectExportEvent;
+			
+			private var _gridId:String;
+			private var _header:String;
+			
+			private function build():void
+			{
+				getDataBut.toolTip =  "Get the data for " + _header + " " + this.data.id;	
+			}
+			
+			public function set gridId(id:String):void
+			{
+				_gridId = id;
+			}
+			
+			public function set header(headerLabel:String):void
+			{
+				
+				_header = headerLabel;
+			}
+			
+			private function getData():void
+			{
+				dispatchEvent(new LoadDataEvent(LoadDataEvent.LOAD_DATA, new Item(this.data, _gridId)));		
+			}
+		
+		]]>
+	</mx:Script>
+	<mx:Image
+		id="getDataBut"
+		source="@Embed('/assets/img/reload.png')" 
+		click="getData()"
+		buttonMode="true"
+		useHandCursor="true"/>
+</mx:HBox>

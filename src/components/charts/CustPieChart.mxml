@@ -1,0 +1,678 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	width="100%" height="100%" horizontalAlign="left" verticalAlign="middle"
+	verticalScrollPolicy="off" horizontalScrollPolicy="off"
+	creationComplete="initComp()"
+	>
+	<mx:Script>
+		<![CDATA[
+			import classes.datastructures.Item;
+			import components.renderers.DataTipRenderer;
+			import mx.collections.ArrayCollection;
+			import mx.containers.Box;
+			import mx.charts.chartClasses.IChartElement;
+			import components.popUps.NoDataPopUp;
+			import mx.charts.chartClasses.LegendData;
+			import mx.events.FlexEvent;
+			import mx.effects.Dissolve;
+			import mx.effects.easing.Bounce;
+			import mx.charts.effects.SeriesInterpolate;
+			import mx.effects.Effect;
+			import mx.controls.Spacer;
+			import mx.events.CloseEvent;
+			import mx.controls.Button;
+			import mx.containers.HBox;
+			import classes.events.*;
+			import classes.GlobalVars;
+			import mx.utils.ObjectProxy;
+			import mx.charts.events.ChartItemEvent;
+			import mx.events.CollectionEvent;
+			import mx.containers.VBox;
+			import mx.controls.Label;
+			import classes.helpers.XmlHelper;
+			import classes.components.Grid;
+			import mx.charts.PieChart;
+			import mx.charts.Legend;
+			import mx.charts.HitData;
+			import mx.charts.series.PieSeries;
+			import mx.charts.series.items.PieSeriesItem;
+			//import mx.collections.ArrayCollection;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.DataHelpers;
+			import mx.controls.Alert;
+			import classes.rpc.GetData;
+			import classes.skins.CustLegendItemPieChart;
+			import mx.rpc.events.FaultEvent;
+			import mx.managers.PopUpManager;
+		
+			private var _dbData:ArrayCollection;
+			private var _pieChartData:ArrayCollection;
+			private var _item:Item;
+			private var _drillDownItemId:String;
+			private var _isDrillDown:Boolean;
+			private var _parentIsDrillDown:Boolean;
+			//private var _isDataComp:Boolean;
+			private var _groupedPieChart:PieChart;
+			private var _groupedPieChartDrillDown:CustPieChart;
+			private var _legend:Legend;
+			private var _legendLabels:Array;
+			private var _chartXML:XML;
+			private var _chartXMLDrillDown:XML;			
+			private var _chartField:String;
+			private var _globalVars:GlobalVars;
+			private var _configXML:XML;
+			private var _chartBox:HBox;
+			private var _chartDescription:Label;
+			private var _hasDrillDown:Boolean;
+			private var _legendBox:VBox;
+			private var _explodeItem:PieSeriesItem;
+			private var _dataTip:String;
+			
+			
+			[Bindable]
+			[Embed(source="/assets/img/exclamation.png")]
+            private var alertIcon:Class;
+			
+			/**
+			 * @private
+			 */
+			private function initComp():void
+			{
+				_globalVars = GlobalVars.getInstance();
+				_configXML = _globalVars.ConfigXML;	
+				//  let the parent component know that this chart is ready
+			 	dispatchEvent(new CompBuiltEvent(CompBuiltEvent.SEARCH_CHART_ELEMENT, this));
+			}
+			
+			/**
+			 * Create a pie chart representation for the data in an <code>ArrayCollection</code> which is the data of a <code>Grid</code> component.
+			 * 
+			 * <p>This component has a recursive drill down functionality as well. this is why you can't pass a simple <code>Grid</code> instance 
+			 * to the <code>build</code> method.</p>
+			 * 
+			 * <p>Have a look at the documentation for the <code>CustColumnChart</code> component to get an idea how to link a <code>grid</code> to a chart.</p>
+			 * 
+			 * @example Sample drill down configuration.
+			 * 
+			 * <listing version="3.0">
+			 * 	&lt;chart type="pieChart" id="examplePieChart"&gt;
+			 *		&lt;dataTip&gt;Double click to get other mice seen at this box&lt;/dataTip&gt;
+			 *		&lt;field&gt;box&lt;/field&gt;
+			 *		&lt;desc&gt;Grouped box data for rfid&lt;/desc&gt;
+			 *		
+			 *		<b>&lt;!-- 	drillDown:
+			 *			
+			 *				Drill down chart for this grid. The gridId value must be equal to a grid with this id.
+			 * 		--&gt;
+			 *		&lt;drillDown&gt;
+			 *			&lt;gridId&gt;exampleGrid&lt;/gridId&gt;
+			 *		&lt;/drillDown&gt;</b>
+			 * &lt;/chart&gt; 
+			 * </listing> 
+			 * 
+			 * <p>The drill down configuration points to a grid with the id <code>exampleGrid</code>. The configuration for the <code<exampleGrid</code> would look something like this:</p>
+			 * <listing version="3.0">
+			 * &lt;grid id="exampleGrid" &gt;								
+			 * 		<i>[...]</i>
+ 			 *		<b>&lt;chart type="pieChart" id="secExamplePieChart" drillDown="true" /&gt;</b>
+ 			 * &lt;/grid&gt; 
+			 * </listing> 
+			 * 
+			 * <p>The chart configuration points to another <code>&lt;pieChart&gt;</code> with id <code>secExamplePieChart</code> which holds the drill down chart configuration for the <code>grid</code> we started with:</p>
+			 * <listing version="3.0">
+			 * &lt;chart type="pieChart" id="secExamplePieChart"&gt;
+			 *		&lt;field&gt;rfid&lt;/field&gt;
+			 *		&lt;desc&gt;Grouped rfid data for box&lt;/desc&gt;
+			 *		&lt;dataTip&gt;Double click to get boxes this mouse was&lt;/dataTip&gt;
+			 *		&lt;addLabel&gt;
+			 *			&lt;field&gt;sex&lt;/field&gt;
+			 *		&lt;/addLabel&gt;
+			 *		<b>&lt;drillDown&gt;
+			 *			&lt;gridId&gt;miceData&lt;/gridId&gt;
+			 *		&lt;/drillDown&gt;</b>
+			 * &lt;/chart&gt; 
+			 * </listing>
+			 * 
+			 * <p>Again, there's a <code>drillDown</code> configuration. This <i>chain</i> of configurations leads to the recursive drill down behaviour, because each drill down chart is an instance of type <code>CustPieChart</code>.</p>
+			 * 
+			 * @param chartXML Xml configuration for the chart.
+			 * @param dbData The data to visualize.
+			 * @param itemId The id of the item, the data is shown for.
+			 * @param isDataComp If the <i>parent</i> component - usuallay a <code>Grid</code> - is a data comp.
+			 * @param drillDownItemId Used for the drill down behaviour. Leave at <code>null</code> on set up.  
+			 * @param parentIsDrillDown Used for the drill down behaviour. Leave at <code>null</code> on set up.  
+			 * 
+			 * @see components.charts.CustColumnChart
+			 * @see components.grids.Grid
+			 */
+			public function build(chartXML:XML, dbData:ArrayCollection, item:Item, drillDownItemId:String = null, parentIsDrillDown:Boolean = false):void 
+			{
+				
+				_groupedPieChart = new PieChart();
+							
+				_chartXML = chartXML;
+				_item = item;
+				_dbData = dbData;
+				_drillDownItemId = drillDownItemId;
+				
+				_dbData.addEventListener(CollectionEvent.COLLECTION_CHANGE,collectionChanged);
+				
+				// drilld down or not
+				if(drillDownItemId == null) {
+					_isDrillDown = false;
+				} else {
+					_isDrillDown = true;
+					_groupedPieChart.addEventListener(FlexEvent.CREATION_COMPLETE, explodeItemOnInit);
+				}
+				
+				_parentIsDrillDown = parentIsDrillDown;
+				
+				// Label, description for the chart
+				_chartDescription = new Label();
+				_chartDescription.styleName = "genLabelDark";
+				_chartDescription.selectable = true;
+				var description:String;
+				if(_isDrillDown) {
+					description = XmlHelper.getChartDesc(_chartXML, _drillDownItemId);
+				} else {
+					description = XmlHelper.getChartDesc(_chartXML, _item.id);
+				}
+				this.label = description;
+				_chartDescription.text = description;
+				
+				// data tip value
+				_dataTip = XmlHelper.getChartDataTip(_chartXML); 
+				
+				
+				/* --------------------------
+				 	CHART DATA PROVIDER
+				-------------------------- */
+			 	_chartField = _chartXML.field;
+				_pieChartData = DataHelpers.distinctDataCount(_chartField,_dbData);			 	
+			 	_groupedPieChart.dataProvider = _pieChartData;
+			 	
+			 	// adding labels for chart (needed in legend)
+			 	_pieChartData = addNameFieldValue(_chartXML, _chartField, _dbData, _pieChartData);
+			 	
+				/* --------------------------
+				 	CONF CHART
+				-------------------------- */
+				_groupedPieChart.styleName = "custChart";
+				_groupedPieChart.showDataTips = true;
+				_groupedPieChart.percentWidth = 100;
+				_groupedPieChart.percentHeight = 100;
+				_groupedPieChart.dataTipFunction = custDataTipFunc;
+				//_groupedPieChart.setStyle("dataTipRenderer", components.renderers.DataTipRenderer);
+
+		 		var disEff:Dissolve = new Dissolve();
+		 		disEff.alphaFrom = 0.0;
+		 		disEff.alphaTo = 1.0;
+		 		disEff.duration = 1000;
+		 		_groupedPieChart.setStyle("addedEffect", disEff);
+		 		
+		 		var drillDownXMLList:XMLList = _chartXML.drillDown;
+				if(drillDownXMLList.length() > 0) {
+					_hasDrillDown = true;
+					_groupedPieChart.doubleClickEnabled = true;
+					_groupedPieChart.addEventListener(ChartItemEvent.ITEM_DOUBLE_CLICK, drillDown);
+				} else {
+					_hasDrillDown = false;
+				}
+								
+				/* --------------------------
+				 	CHART DATA SERIES
+				-------------------------- */
+				var pieChartSeries:Array = new Array();
+				
+				// configuring series
+				var fieldPieSeries:PieSeries = new PieSeries();
+				fieldPieSeries.setStyle("showDataEffect", interpolEff);
+				fieldPieSeries.field = "count";
+				fieldPieSeries.nameField = "label";
+				fieldPieSeries.labelFunction = labelFunc;
+				fieldPieSeries.setStyle("labelPosition","callout");
+				
+				// Adding Effect 
+				var drillDownEffect:SeriesInterpolate = new SeriesInterpolate();
+				drillDownEffect.duration = 1000;
+				drillDownEffect.elementOffset = 0;
+				drillDownEffect.minimumElementDuration = 500;
+				drillDownEffect.easingFunction = Bounce.easeOut;
+				fieldPieSeries.setStyle("showDataEffect", drillDownEffect);
+					
+				pieChartSeries.push(fieldPieSeries);
+				_groupedPieChart.series = pieChartSeries;
+				
+				/* --------------------------
+				 	CHART DESCRIPTION
+				-------------------------- */
+				var descriptionLabel:Label = new Label();
+				descriptionLabel.styleName = "genLabelDark";
+				descriptionLabel.text = XmlHelper.getChartDesc(_chartXML, _item.id);
+				
+				/* --------------------------
+				 	LEGEND BOX
+				-------------------------- */
+				_legendBox = new VBox;
+				_legendBox.percentHeight = 100;
+				_legendBox.styleName = "legendBox";
+				
+				// add label to legend box
+				var legendLabel:Label = new Label(); 
+				legendLabel.text = _chartField;
+				legendLabel.styleName = "genLabelBright";
+				
+				_legendBox.addChild(legendLabel);
+				
+				// add Legend to legend box
+				_legend = new Legend();
+				_legend.percentHeight = 100;
+				_legend.styleName = "searchChartLegendV";
+				_legend.direction = "vertical";
+
+				_legend.dataProvider = _groupedPieChart;
+				_legend.legendItemClass = CustLegendItemPieChart;
+				
+				_legendBox.addChild(_legend);
+				
+				// add close button to legend, if it is a drillDownChart
+				if(_isDrillDown) {
+					
+					var legendButtonBox:HBox = new HBox();
+					legendButtonBox.percentWidth = 100;
+					legendButtonBox.setStyle("horizontalAlign", "right");
+					
+					// remove drill down chart button
+					var closeButton:Button = new Button();
+					closeButton.label = 'close';
+					closeButton.toolTip = "close this chart";
+					closeButton.styleName = 'normButton';
+					closeButton.addEventListener(MouseEvent.CLICK, requestRemoveMe);
+					
+					legendButtonBox.addChild(closeButton);
+					
+					// back button
+					if(_parentIsDrillDown) {
+						var backButton:Button = new Button();
+						backButton.label = 'back';
+						backButton.toolTip = "go to previous chart";
+						backButton.styleName = 'normButton';
+						backButton.addEventListener(MouseEvent.CLICK, requestParentChart);
+						
+						legendButtonBox.addChild(backButton);
+					}
+					
+				
+					//_legendBox.addChild(downPusher);
+					_legendBox.addChild(legendButtonBox);
+				}
+
+				/* --------------------------
+				 	ADD CHART
+				-------------------------- */
+				_chartBox = new HBox();
+			 	_chartBox.percentWidth = 100;
+				_chartBox.percentHeight = 100;
+				_chartBox.setStyle("horizontalGap", 0);
+				
+			 	var chartVBox:VBox = new VBox();
+				chartVBox.setStyle("horizontalAlign", "center");
+				chartVBox.setStyle("verticalAlign","middle");
+				chartVBox.percentWidth = 100;
+				chartVBox.percentHeight = 100;
+				chartVBox.horizontalScrollPolicy = "off";
+				chartVBox.verticalScrollPolicy = "off";
+				 
+				if(_isDrillDown) {
+						
+					chartVBox.setStyle("backgroundColor", "#E6E6E6");
+					chartVBox.addChild(_groupedPieChart);
+					chartVBox.addChild(_chartDescription);
+					_chartBox.addChild(chartVBox);
+					_chartBox.addChild(_legendBox);
+
+				} else {
+					_chartBox.addChild(_legendBox)
+					chartVBox.addChild(_groupedPieChart);
+					chartVBox.addChild(_chartDescription);
+					_chartBox.addChild(chartVBox);
+				}
+				
+				this.addChild(_chartBox);
+			 }
+			 		 
+			 
+			 /**
+			 * Custom <code>pieChart</code> data tip 
+			 */
+			 private function custDataTipFunc(hd:HitData):String 
+			 {
+
+				var dataTipString:String; 
+				
+				if(_hasDrillDown) {
+					dataTipString = "<u><b>Record count: " + hd.item.count + "</b></u><br/>" + 
+						"<b>" + _chartField + "</b>: " + hd.item.label +
+						"<br/>(" + _dataTip + ")";
+					
+				} else {
+					dataTipString = "<u><b>Record count: " + hd.item.count + "</b></u><br/>" + 
+						"<b>" + _chartField + "</b>: " + hd.item.label;
+				}
+
+				return dataTipString;
+			}
+			
+			/**
+			 * Callback function for labels
+			 */
+			private function labelFunc(item:Object, field:String, index:Number, percentValue:Number):String
+			{
+                return Number(item[field]) + " (" + percentValue.toFixed(2) + "%)";
+   			}
+			
+			 
+			 /**
+			 * Update <code>CustPieChart.dataProvider</code> when the <code>ArrayCollection</code> is refreshed
+			 * (mainly caused by filter events)
+			 */
+			private function collectionChanged(event:CollectionEvent):void
+			{
+				//trace("[CustPieChart] collectionChanged");
+				_pieChartData = DataHelpers.distinctDataCount(_chartField,_dbData);			 	
+			 	_groupedPieChart.dataProvider = _pieChartData;
+			 	
+				_pieChartData = addNameFieldValue(_chartXML, _chartField, _dbData, _pieChartData);
+				_legend.dataProvider = _groupedPieChart;
+			}
+			
+			/**
+			 * Double Click Handler
+			 */
+			 private function drillDown(event:ChartItemEvent):void
+			 {
+		 		
+		 		var reqGridXMLList:XMLList = _chartXML.drillDown.grid;
+		 		var reqGridId:String = reqGridXMLList.toString(); 
+		 		//var drillDownGridXML:XML = ;
+		 		 
+		 		_groupedPieChart.removeEventListener(ChartItemEvent.ITEM_DOUBLE_CLICK, drillDown);
+		 		_drillDownItemId = event.hitData.item.field;
+		 		
+		 		var itemData:Object = event.hitData.item;
+		 		itemData.id = itemData.field;
+		 		var item:Item = new Item( itemData, XmlHelper.getDrillDownGridId(_chartXML) ); 
+		 			
+		 		// dispatch a LoadDataEvent to the DataMinerComponent.
+		 		// This detour is needed cause we do not have the dateRange down here
+				dispatchEvent(new LoadDataEvent(LoadDataEvent.LOAD_DATA_FOR_COMP,item));
+				
+				// Add the needed event listeners for when the data is loaded
+		 		Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_COMPLETE,addDrillDownChart);
+				Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				
+				// highlight pie chart item
+				_explodeItem = event.hitData.chartItem as PieSeriesItem;
+                
+			 }
+			 
+			 
+			 /**
+			 * Add drill down chart to the main box when the data is loaded from the database
+			 */
+			 private function addDrillDownChart(event:ObjectDataEvent):void 
+			 {
+			 	
+			 	Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_COMPLETE,addDrillDownChart);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				
+				_groupedPieChart.addEventListener(ChartItemEvent.ITEM_DOUBLE_CLICK, drillDown);
+				
+				//var reqGridId:String = XmlHelper.getDrillDownGridId(_chartXML);
+				var item:Item = event.values[0];
+			 	var dbData:Array = event.values[1];
+				var drillDownData:ArrayCollection = dbData[ item.gridId ];
+				if(drillDownData.length > 0) { // check if we have data
+				 	var drillDownChartsXMLList:XMLList = XmlHelper.getDrillDownChartXML(item.gridId);
+				 	var drillDownChartXML:XML = drillDownChartsXMLList[0]; // only one drill down chart is allowed
+				 	
+				 	// remove drill Downs
+				 	if(_groupedPieChartDrillDown != null ) {
+				 		this.removeChild(_groupedPieChartDrillDown);
+				 		
+				 	}
+				 	// adding the drill down charts
+				 	//for each (var drillDownChartXML:XML in drillDownChartsXMLList) {
+				 		
+			 		_groupedPieChartDrillDown = new CustPieChart();
+			 		var parentIsDrillDown:Boolean = _isDrillDown ? true : false;
+			 		_groupedPieChartDrillDown.build(drillDownChartXML,drillDownData,_item, _drillDownItemId, parentIsDrillDown);
+			 		
+			 		// if we are already in a drill down chart remove that one first
+			 		if(_isDrillDown) {
+			 			this.removeChild(_chartBox);
+			 		} else{
+			 			
+			 			// Switch to  full screen data view
+						dispatchEvent( new RequestViewEvent(RequestViewEvent.DATA_VIEW) );
+						dispatchEvent( new RequestViewEvent(RequestViewEvent.CHART_VIEW) );
+			 		}
+			 		
+			 		this.addChild(_groupedPieChartDrillDown);
+					
+					// add event listener to remove drill down
+
+					if(parentIsDrillDown) {
+						addEventListener("restoreOriginalChart", restoreOriginalChart);
+					} else {
+						addEventListener("drillDownRemove", removeDrillDown);
+					}
+					
+					// explode pie item
+					explodePieItem(_explodeItem);
+				 	
+				 } else {
+				 	var zeroDataPop:NoDataPopUp;
+				 	zeroDataPop = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false));
+					zeroDataPop.noDataLabel = "No data found for " + _chartField;
+				 }
+			 }
+			 
+			 /**
+			 * Called, when something in the rpc went wrong
+			 */
+			private function showError(fault:ObjectDataEvent):void
+			{
+				_groupedPieChart.addEventListener(ChartItemEvent.ITEM_DOUBLE_CLICK, drillDown);
+				
+				var faultData:FaultEvent = fault.values[0];
+				
+				Alert.show(faultData.fault.faultString + "\n Please choose other data parameters", faultData.fault.faultCode.toString(),4,null,null,alertIcon);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * close drill down chart
+			 */
+			private function closeDrillDown(event:MouseEvent):void
+			{
+				this.removeChild(_groupedPieChartDrillDown);
+				var arr:Array = [];
+                _groupedPieChart.series[0].perWedgeExplodeRadius = arr;
+			}
+			
+			/**
+			 * Get the <code>PieSeriesItem</code> from the drill down chart which is the origin.
+			 * Then pass it tho the <code>explodePieItem</code> to explode that <code>PieSeriesItem</code>
+			 */
+			private function explodeItemOnInit(event:Event):void
+			{
+				
+				var pieSeries:PieSeries = _groupedPieChart.series[0];
+				var pieSeriesLegendData:Array = pieSeries.legendData;
+				var pieSeriesItems:Array = pieSeries.items;
+				
+				// getting label for the _itemId
+				var itemLabel:String = null;
+				var index:int = 0;
+				while (itemLabel == null && index < _pieChartData.length) {
+					var dataObject:Object = _pieChartData[index];
+					var dataField:String = dataObject.field;
+					if(dataField == _item.id) {
+						itemLabel = dataObject.label;
+					}
+					
+					index++;
+					
+				}
+				
+				// checking PieSeries for the drillDown item (based on the label)
+				var pieItem:PieSeriesItem = null;
+				index = 0; // reset index
+				while (pieItem == null && index < pieSeriesLegendData.length) {
+					var legendData:LegendData = pieSeriesLegendData[index];
+					if(legendData.label == itemLabel) {
+						pieItem = pieSeriesItems[index];
+					}
+					
+					index++;
+				}
+				
+				if( pieItem != null ) {
+					explodePieItem(pieItem);
+				}
+			}
+			
+			/**
+			 * Explodes the passed <code>PieSeriesItem</code> from the passed <code>PieChart</code>
+			 */
+			private function explodePieItem( pieItem:PieSeriesItem ):void
+            {
+            	var degrees:Number = radiansToDegrees(pieItem.startAngle);
+                var arr:Array = [];
+                arr[pieItem.index] = 0.2;
+                _groupedPieChart.series[0].perWedgeExplodeRadius = arr;
+               _groupedPieChart.series[0].startAngle -= degrees;
+               
+            }
+			
+			/**
+			 * Convert radians to degrees
+			 */
+			private function radiansToDegrees(radians:Number):Number {
+                return radians * (180 / Math.PI);
+            }
+            
+            /**
+            * Add Labels for the pieChart data
+            * 
+            * @param chartXML 
+            * @param groupedData
+            * @param chartField
+            * @param dbdata
+            */
+            private function addNameFieldValue(chartXML:XML, chartField:String, dbData:ArrayCollection, groupedData:ArrayCollection):ArrayCollection
+            {
+            	var chartLabels:Array = new Array();
+            	
+            	
+            	var subLabelField:String = XmlHelper.getChartAddLabel(chartXML);;
+            	
+            	// creating assoc array with the chartField (unique) as key
+            	// and the desired subLabel(from the chart xml) as value 
+            	var chartFieldSubLabelAssoc:Array = new Array();
+            	for each (var dbDataItem:Object in dbData) {
+            		chartFieldSubLabelAssoc[dbDataItem[chartField]] = dbDataItem[subLabelField]; 
+            	}
+            	
+            	// looping through the grouped data (pieChart dataProvider)
+            	// and adding a label property to each object which will
+            	// be used as the name field for the PieChart PieSeries
+            	for each (var groupedItem:Object in groupedData) {
+            		
+            		var groupedItemId:String = groupedItem.field;
+            		var subLabel:String = chartFieldSubLabelAssoc[groupedItemId];
+            		
+					if(subLabel == "" || subLabel == null) {
+						groupedItem.label = groupedItemId;
+					} else {
+						groupedItem.label = groupedItemId + " (" + subLabel + ")";
+					}
+										
+            	}
+					
+            	return groupedData;
+            }
+            
+                        
+            /**
+            * Dispatch an event to the parent component to let him know that we want to be removed
+            */
+            private function requestRemoveMe(event:Event):void
+            {
+            	dispatchEvent( new Event("drillDownRemove",true, false) );
+            	event.stopImmediatePropagation();
+            }
+            
+             /**
+            * Dispatch an event to the parent component to switch back to its original chart
+            */
+            private function requestParentChart(event:Event):void
+            {
+            	dispatchEvent( new Event("restoreOriginalChart",true, false) );
+            	event.stopImmediatePropagation();
+            }
+            
+            /**
+            * The child (_drillDownChart) asked to get removed
+            */ 
+            private function removeDrillDown(event:Event):void
+            {
+            	this.removeChild(_groupedPieChartDrillDown);
+            	_groupedPieChartDrillDown = null;
+            	removeEventListener("drillDownRemove", removeDrillDown);
+            	
+            	// move exploded item back
+            	var arr:Array = [];
+                _groupedPieChart.series[0].perWedgeExplodeRadius = arr;
+                
+                // switch back to original view
+                dispatchEvent( new RequestViewEvent(RequestViewEvent.RESTORE_VIEW) );
+            	event.stopImmediatePropagation();
+            }
+            
+            /**
+            * The child (_drillDownChart) asked to get removed and show original chart
+            */ 
+            private function restoreOriginalChart(event:Event):void
+            {
+            	this.removeChild(_groupedPieChartDrillDown);
+            	this.addChild(_chartBox);
+            	_groupedPieChartDrillDown = null;
+            	removeEventListener("restoreOriginalChart", restoreOriginalChart);
+            	removeEventListener("drillDownRemove", removeDrillDown);
+            	event.stopImmediatePropagation();
+            }
+            
+            /**
+            * The xml-configuration for this chart.
+            */ 
+			public function get chartXML():XML
+			{
+				return _chartXML;
+			}
+			
+			/**
+            * The data for this chart.
+            */ 
+			public function get chartData():ArrayCollection
+			{
+				return _pieChartData;
+			}
+           
+		]]>
+	</mx:Script>
+	<mx:SeriesInterpolate id="interpolEff" duration="1000" />
+</mx:HBox>

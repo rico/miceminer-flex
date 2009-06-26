@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	horizontalAlign="center"
+	borderStyle="solid" borderThickness="2" borderColor="#FFFFFF" cornerRadius="6"
+	backgroundColor="#000000" backgroundAlpha="0.75"
+	paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10"
+	width="400" height="{Application.application.height * 0.75}"
+	creationComplete="PopUpManager.centerPopUp(this)">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.core.Application;
+			import mx.managers.PopUpManager;
+			
+			/**
+			 * @private
+			 */
+			private function openEmail(email:String):void{
+			   navigateToURL( new URLRequest( 'mailto: ' + email ),"_self");
+			}
+			
+			/**
+			 * @private
+			 */
+			private function openUrl(event:TextEvent):void
+			{
+        		navigateToURL( new URLRequest( event.text) ,"_blank");
+			}
+			
+			
+		]]>
+	</mx:Script>
+		
+	<mx:VBox horizontalGap="0" horizontalAlign="center" cornerRadius="5"
+		width="100%" height="100%"
+		paddingBottom="3" paddingTop="15" paddingLeft="15" paddingRight="15"
+		backgroundColor="#000000" backgroundAlpha="0.5"
+		borderStyle="solid" borderThickness="1" borderColor="#878787">
+		<mx:Image source="@Embed('/assets/img/mouse_mid.png')" />
+		<mx:Label text="miceminer" fontWeight="bold" color="#FFFFFF" fontFamily="MyriadPro" fontSize="18"/>
+		<mx:Label text="version 1.0" fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="10"/>
+		<mx:Label text="code by" fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="8"/>
+		<mx:Label htmlText="&lt;b&gt;Rico Leuthold&lt;/b&gt;" click="openEmail('rleuthold@access.ch')" 
+			fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="10" 
+			useHandCursor="true" buttonMode="true" mouseChildren="false"/>
+		<mx:Label text="used libraries"  fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="9" />
+		<mx:Label link="openUrl(event)" selectable="true" fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="10">
+			<mx:htmlText><![CDATA[<b><a href='event:http://code.google.com/p/flexlib/'>&lt;flexlib: /&gt;</a></b>]]></mx:htmlText>
+		</mx:Label>
+		<mx:Label link="openUrl(event)" selectable="true"  fontWeight="normal" color="#FFFFFF" fontFamily="MyriadPro" fontSize="10">
+			<mx:htmlText><![CDATA[<b><a href='event:http://code.google.com/p/birdeye/'>BirdEye</a></b>]]></mx:htmlText>
+		</mx:Label>
+	
+		<mx:HRule width="20" strokeColor="#FFFFFF" strokeWidth="1" />
+		<mx:Label text="Special Thank's To" fontWeight="bold" color="#FFFFFF" fontFamily="MyriadPro" fontSize="14"/>
+		<mx:TextArea id="credits" borderStyle="none" backgroundAlpha="0" width="100%" height="100%"
+			editable="false"
+			textAlign="center"
+			fontFamily="MyriadPro" fontSize="11"
+			color="#FFFFFF"
+			link="openUrl(event)"
+			verticalScrollBarStyleName="aboutScrollStyle"> 
+			<mx:htmlText><![CDATA[
+<p><b><a href='event:http://www.zool.uzh.ch/Research/AnimalBehaviour/Koenig_en.html'>Prof. Dr. Barbara König</a></b> and <b><a href='event:http://www.zool.uzh.ch/Research/AnimalBehaviour/Koenig/Groupmembers_en.html'>Dr. Anna Lindholm</a></b> for the inspiration, the inputs and the support in this project.</p>
+<p>All the members of the <b><a href='event:http://www.ailab.ch'>AILab</a></b> for providing me with a great workspace</p>
+<p><b><a href='event:http://www.tofuse.ch/'>Christian Iten</a></b> for all the inspiring discussions</p>
+<p><b><a href='event:http://www.entropy.ch/'>Marc Liyanage</a></b> for his expert help</p>
+<p>All the peoples at the <b><a href='event:http://tech.groups.yahoo.com/group/flexcoders/'>flexcoders</a></b> mailing list for helping me out with their knowledge</p>
+<p><b><a href='event:http://www.adobe.com/products/flex/'>Adobe</a></b> for providing me with a free <i>Flex Builder</i></p> 		
+			]]></mx:htmlText>
+		</mx:TextArea>
+		<mx:Spacer height="2" />
+		<mx:HRule width="20" strokeColor="#FFFFFF" strokeWidth="1" />
+		<mx:LinkButton label="close" 
+			color="#DDDDDD" textRollOverColor="#FFFFFF" rollOverColor="#333333" 
+			fontFamily="MyriadPro" fontSize="11" fontWeight="normal" 
+			click="PopUpManager.removePopUp(this)"/>
+	</mx:VBox>
+	
+</mx:VBox>

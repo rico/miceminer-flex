@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	horizontalAlign="center"
+	paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"
+	creationComplete="build()">
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.events.LoadDataEvent;
+			import classes.datastructures.Item;
+			import classes.events.DirectExportEvent;
+			
+		
+			private function build():void
+			{
+				deleteBut.toolTip =  "Click to delete all data for this item";	
+			}
+			
+			private function deleteItem():void
+			{
+				dispatchEvent(new Event("delete",true));
+			}
+			
+			
+		]]>
+	</mx:Script>
+	<mx:Image
+		id="deleteBut"
+		source="@Embed('/assets/img/close.png')" 
+		click="deleteItem()"
+		buttonMode="true"
+		useHandCursor="true"/>
+</mx:HBox>

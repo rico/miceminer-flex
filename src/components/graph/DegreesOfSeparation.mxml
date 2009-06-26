@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * The MIT License
+ *
+ * Copyright (c) 2008
+ * United Nations Office at Geneva
+ * Center for Advanced Visual Analytics
+ * http://cava.unog.ch
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+-->
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" verticalGap="2">
+	
+	<mx:HBox width="100%" horizontalGap="2">
+		<mx:Label
+			toolTip="Use this control to specify visible link distance"
+			text="Degrees of Separation:"
+			styleName="graphControlLabel"
+			/>
+		<mx:Label text="{degreesOfSep.value}" styleName="graphControlHighlight" />
+	</mx:HBox>
+	
+		
+	<mx:HSlider
+		tickInterval="1"
+		width="100%"
+		id="degreesOfSep"
+		minimum="1"
+		liveDragging="true"
+		snapInterval="1"
+		change="updateMaxVisDist()"
+		enabled="{graphData.layouterRunning}"
+		styleName="filterSlider" 
+		/>
+	
+	<mx:Script>
+		<![CDATA[
+			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
+			import classes.datastructures.GraphData;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+		
+			private var _vgraph:VisualGraph;
+			private var _graphData:GraphData;
+			
+			/**
+			 * Dispatched when the <code>updateMaxVisDist</code> method is called.
+			 * 
+			 * @eventType flash.events.event
+			 */
+			[Event(name="updateDistance", type="flash.events.event")]
+			
+			/**
+			 * The <code>GraphData</code> instance this control acts on.
+			 * 
+			 * @see classes.datastructures.GraphData
+			 */ 
+			[Bindable]
+			public function get graphData():GraphData
+			{
+				return _graphData;
+			}
+			
+			/**
+			* @private
+			*/
+			public function set graphData(graph:GraphData):void
+			{
+				_graphData = graph;
+				degreesOfSep.maximum = _graphData.diameter;
+				
+				if( isNaN(_graphData.degreesOfSep) ) {
+					degreesOfSep.value = _graphData.diameter;
+				} else {
+					degreesOfSep.value = _graphData.degreesOfSep; 
+				}
+				
+				updateMaxVisDist();
+			}
+			
+			/**
+			 * The <code>vgraph</code> the control acts on.
+			 */
+			[Bindable]
+			public function get vgraph():VisualGraph {
+				return _vgraph;
+			}
+			
+			/**
+			* @private
+			*/
+			public function set vgraph(v:VisualGraph):void {
+				_vgraph = v;
+				registerListeners();
+			}
+			
+			/**
+			 * Updates the visible degree of separation in the <code>vgraph</code> this control acts on.
+			 * 
+			 * <p>Sets the <code>vgraph.maxVisibleDistance</code> and <code>vgraph.maxVisibleDistance</code> properties to  the value of the slider 
+			 * and calls the <code>vgraph.draw()</code> method to commit the changes.</p>
+			 * 
+			 * <p>Dispatches a bubbling <code>updateDistance</code> event.</p> 
+			 */
+			public function updateMaxVisDist():void {
+				if(degreesOfSep == null) {
+					return;
+				}
+				
+				if(_vgraph == null) {
+					trace("DegreeOfSeparation NOT changed, no valid vgraph!");
+					return;
+				}
+				
+				_graphData.degreesOfSep = degreesOfSep.value;
+				_vgraph.maxVisibleDistance = degreesOfSep.value;
+				_vgraph.draw();
+				
+				if(_vgraph.graph != null ) {
+					dispatchEvent(new Event("updateDistance",true));					
+				}
+				
+			}
+			
+			/**
+			 * Sets the value of the slider.
+			 * 
+			 * @param e Either a <code>VGraphEvent</code> which is dispatched by the <b><a href="http://code.google.com/p/birdeye/wiki/RaVis">RaVis</a></b> 
+			 * 			or when called without the argument the slider value is set to the <code>vgraph.maxVisibleDistance</code> value.
+			 */
+			public function refreshMaxVisDist(e:VGraphEvent = null):void {
+				if(degreesOfSep == null) {
+					return;
+				}
+				if(_vgraph == null) {
+					trace("DegreeOfSeparation NOT refreshed, no valid vgraph!");
+					return;
+				}
+				degreesOfSep.value = _vgraph.maxVisibleDistance;
+			}
+			
+			/**
+			 * Event handler to be triggered in case the
+			 * layouter in VGraph has changed.
+			 * Only used to apply the current value to the new layouter.
+			 * */
+			private function layouterChanged(e:VGraphEvent = null):void {
+				
+				//* check if we have a layouter at all */
+				if(_vgraph.layouter == null || _vgraph.layouter is DirectPlacementLayouter) {
+					degreesOfSep.enabled = false;
+					degreesOfSep.alpha = 0.5;
+				} else {
+					degreesOfSep.enabled = true;
+					degreesOfSep.alpha = 1;
+				
+				} 
+				
+			}
+			
+			/**
+			 * register listeners
+			 */
+			private function registerListeners():void {
+				_vgraph.addEventListener(VGraphEvent.VGRAPH_CHANGED,refreshMaxVisDist);
+				_vgraph.addEventListener(VGraphEvent.LAYOUTER_CHANGED,layouterChanged);
+			}
+			
+		]]>
+	</mx:Script>
+</mx:VBox>

@@ -1,0 +1,1335 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:ravis="org.un.cava.birdeye.ravis.graphLayout.visual.*"
+	xmlns:controls="org.un.cava.birdeye.ravis.components.ui.controls.vgraphControls.*"
+	xmlns:layoutControls="org.un.cava.birdeye.ravis.components.ui.controls.layouterControls.*"
+	xmlns:flexlib="http://code.google.com/p/flexlib/"
+	xmlns:components = "classes.components.*"
+	xmlns:hc = "com.hillelcoren.components.*"
+	xmlns:graph = "components.graph.*"
+	bottom="0" top="0" left="0" right="0"
+	paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"
+	backgroundAlpha="0"
+	borderStyle="none"
+	creationComplete="build()"
+	show="showHide(event)"
+	hide="showHide(event)">
+	<mx:Script>
+		<![CDATA[
+			import mx.graphics.ImageSnapshot;
+			import components.popUps.InfoPopUp;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridListData;
+			import mx.controls.listClasses.BaseListData;
+			import mx.controls.advancedDataGridClasses.AdvancedDataGridItemRenderer;
+			import mx.containers.TitleWindow;
+			import mx.graphics.codec.PNGEncoder;
+			import mx.utils.ArrayUtil;
+			import mx.utils.ObjectUtil;
+			import mx.events.CloseEvent;
+			import classes.renderer.CustomEdgeLabelRenderer;
+			import mx.core.UIComponent;
+			import components.graph.EdgeDataPanel;
+			import classes.helpers.DateHelpers;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualEdge;
+			import classes.helpers.DataHelpers;
+			import components.popUps.CopiedToClipboardPopUp;
+			import classes.events.LoadEdgeDataEvent;
+			import classes.helpers.XmlHelper;
+			import mx.controls.DataGrid;
+			import classes.helpers.ExcelExport;
+			import classes.helpers.NetdrawExport;
+			import classes.helpers.PngExport;
+			import mx.core.Application;
+			import components.popUps.LoadPopUp;
+			import classes.GlobalVars;
+			import mx.events.FlexEvent;
+			import mx.collections.errors.CursorError;
+			import mx.collections.IHierarchicalCollectionView;
+			import classes.helpers.NodeBasedMeasures;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.edgeRenderers.CustomEdgeRenderer;
+			import mx.managers.PopUpManager;
+			import classes.rpc.GenericDataGetter;
+			import mx.effects.Resize;
+			import classes.datastructures.GraphData;
+			import org.un.cava.birdeye.ravis.graphLayout.data.Edge;
+			import mx.collections.XMLListCollection;
+			import components.renderers.CustomNodeRenderer;
+			import mx.binding.utils.ChangeWatcher;
+			import mx.binding.utils.BindingUtils;
+			import org.un.cava.birdeye.ravis.utils.events.VNodeMouseEvent;
+			import org.un.cava.birdeye.ravis.graphLayout.data.Node;
+			import mx.events.ListEvent;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.GraphHelper;
+			import classes.events.ObjectDataEvent;
+			import classes.events.EventsGlobals;
+			import classes.events.Globs;
+			import classes.events.LoadDataEvent;
+			import classes.rpc.GetGraphData;
+			import mx.events.SliderEvent;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
+			import flash.display.*;
+			
+			import org.un.cava.birdeye.ravis.graphLayout.layout.ForceDirectedLayouter;
+			//import org.un.cava.birdeye.ravis.graphLayout.visual.edgeRenderers.BaseEdgeRenderer;
+       		import org.un.cava.birdeye.ravis.graphLayout.data.INode;
+			import org.un.cava.birdeye.ravis.graphLayout.data.IGraph;
+			import org.un.cava.birdeye.ravis.graphLayout.data.Graph;			
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualNode;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.IVisualNode;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.IVisualGraph;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.IEdgeRenderer;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.ILayoutAlgorithm;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.edgeRenderers.BaseEdgeRenderer
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			public var componentXML:XML;
+			
+			[Bindable]
+			[Embed(source="/assets/img/left_arrow.png")]
+            private var leftArrow:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/right_arrow.png")]
+            private var rightArrow:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/center.png")]
+            private var centerIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/refresh.png")]
+            private var refreshIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/pictureExport.png")]
+            private var picExportIcon:Class;
+			
+			[Bindable]
+			[Embed(source="/assets/img/netdrawExport.png")]
+            private var netdrawExportIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/clear.png")]
+			private var clearIcon:Class;
+			
+			[Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+			
+			// These are the item renderers
+			import components.renderers.CustomNodeRenderer;
+
+			// graph datastructure object
+			private var _graph:IGraph;
+			// active layouter
+			[Bindable]
+			private var layouter:ForceDirectedLayouter;
+			// edge renderer
+			private var selectedEdgeRenderer:IEdgeRenderer;
+			// root node to start with
+			private var startRoot:IVisualNode;
+			// this is used to display the number of visible items
+			private var itemCount:int = 0;
+			// important to ensure we are done with the main initialisation
+			private var initDone:Boolean = false;
+			// the attribute of the xml for the manual filtering
+			private var _manualFilterProperty:String = "sec";
+			
+			/**
+			 * The <code>GraphData</code> object which is active
+			 */
+			[Bindable]
+			private var _selGraphData:GraphData;
+			
+			[Bindable]
+			private var _selGraphDataTimeObj:Object;
+			/**
+			 * The node based measures of all components of the actual graph (<code>_selGraphData</code>)
+			 */
+			[Bindable] 
+			private var _nodeBasedMeasures:ArrayCollection;
+			[Bindable]
+			private var _dataYearsMonths:Object;
+			[Bindable]
+			private var _yearsData:ArrayCollection;
+			[Bindable]
+			private var _monthsData:ArrayCollection;
+			[Bindable]
+			private var _rootNode:CustomNodeRenderer;			
+			[Bindable]
+			private var _month:Number;
+			[Bindable]
+			private var _year:Number;
+			/**
+			 * Contains all <code>GraphData</code> ojects for this graph
+			 */
+			[Bindable]
+			private var _graphData:ArrayCollection;
+			[Bindable]
+			private var _minimizedWidth:uint = 22;
+			private var _maximizedDataPercentWidth:uint;
+			private var _layout:ForceDirectedLayouter;
+			private var _graphXML:XML;
+			private var _graphHelper:GraphHelper;
+			private var _loadWin:LoadPopUp;
+			private var _tempSize:uint;
+			private var _buildComplete:Boolean;
+			private var _limit:Number;
+			private var _edgeInfo:VisualEdge;
+			private var _edgeData:ArrayCollection;
+			private var ConfigXML:XML;
+			private var _edgeDataPanel:EdgeDataPanel;
+			private var _edgeDetail:CustomEdgeLabelRenderer;
+			private var _edgeDataPanelReopen:Boolean;
+			
+			
+			/* Init function, initiates the HTTP
+			 * request. All further initalisation is done
+			 * in the event handler for the HTTP Service */
+			private function build():void 
+			{
+				//styles for hc input
+				search_rfid.combo.promptTextInput.textInput.styleName = "hcinput";
+				search_rfid.combo.promptTextInput.textInput.height = 19;
+			
+				loadView("preparing component");
+				_buildComplete = false;
+				ConfigXML = GlobalVars.getInstance().ConfigXML;
+				_limit = ConfigXML..flex.graph.@limit;
+				
+				getYearsMonths();
+				
+				
+				addEventListener("updateDistance", degreeChanged);
+				var watcherSetter:ChangeWatcher = 
+					BindingUtils.bindSetter(updateRootNode, vgraph, "currentRootVNode");
+					
+				nodes.addEventListener(MouseEvent.CLICK,copyToClipboard);	
+					
+				//getGraphData(false);
+				// Edge data popup
+				addEventListener(LoadEdgeDataEvent.LOAD_EDGE_DATA, showEdgeData);
+				
+				_edgeDataPanel = new EdgeDataPanel();
+				
+				if(componentXML && componentXML.hasOwnProperty('info')) {
+					showInfoBut.enabled = true;
+					showInfoBut.visible = true;
+				}
+				
+				addEventListener("SetFilterValue", updateManFilter);
+				
+			}
+			
+			/**
+			 * Handle show hide of the component. This event occur when the user changes to another component of the 
+			 * tab navigator. 
+			 */
+			private function showHide(event:FlexEvent):void
+			{
+				if(event.type == FlexEvent.SHOW) {
+					if(_edgeDataPanel && _edgeDataPanelReopen == true) {
+						openEdgeDataPanel();
+						_edgeDataPanelReopen = false;
+					}	
+				} else if (event.type == FlexEvent.HIDE) {
+					if(_edgeDataPanel && _edgeDataPanel.open == true) {
+						_edgeDataPanelReopen = true;
+						_edgeDataPanel.close( new CloseEvent(CloseEvent.CLOSE));
+					}
+				}
+				
+			}
+			
+			
+			/**
+			 * @private
+			 * get Years
+			 */
+			 private function getYearsMonths():void
+			 {
+			 	month_combo.enabled = false;
+			 	year_combo.enabled = false;
+			 	
+				var getYearsMonthSQL:String = "SELECT DISTINCT YEAR(`to`) as year, MONTH(`to`) AS month, MONTHNAME(`to`) AS label FROM " + XmlHelper.getDbTableName('meetings');
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearsMonthData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				var getYearsMonthData:GenericDataGetter = new GenericDataGetter(getYearsMonthSQL);
+			 }
+			 
+			 /**
+			 * Get Graph data
+			 * 
+			 * @param fromComboBoxes Default is true. if set to false the <code>_month</code> and <code>_year</code>
+			 * need to be set to a valid number.
+			 */
+			 private function getGraphData():void
+			 {
+			 	
+			 	loadView("getting graph data");
+			 	
+			 	var getData:GetGraphData = new GetGraphData();
+				Globs.broker.addEventListener(EventsGlobals.GRAPH_DATA_LOADED,graphSetup);
+				
+		 		_month = month_combo.selectedItem.id;
+				_year = year_combo.selectedItem.id;
+				
+				this.label = "Graph Data - " + month_combo.selectedItem.label + " " + _year; 
+			 	
+			 	getData.getData(_year,_month);
+			
+			 }
+			 
+			 /**
+			 * @private
+			 * 
+			 * Set years
+			 */
+			private function setYearsMonthData(event:ObjectDataEvent):void
+			{
+			
+				_yearsData = new ArrayCollection();
+				_dataYearsMonths = new Object();
+				
+				for each (var data:Object in event.values[0]) {
+					if( !_dataYearsMonths.hasOwnProperty( data.year ) ) {
+						_dataYearsMonths[ data.year ] = new ArrayCollection();
+						_yearsData.addItem({id: data.year});
+					}
+					
+					if( !_dataYearsMonths[data.year].hasOwnProperty( data.month ) ) {
+						//_dataYearsMonths[ data.year ][ data.month ] = data.label;
+						ArrayCollection(_dataYearsMonths[ data.year ]).addItem({ id: Number(data.month), label: data.label});
+					}
+				}
+				
+				year_combo.selectedItem = _yearsData[ _yearsData.length -1]; 
+				month_combo.dataProvider = _dataYearsMonths[ year_combo.selectedItem.id ];
+				month_combo.selectedItem = ArrayCollection(month_combo.dataProvider).getItemAt( ArrayCollection(month_combo.dataProvider).length -2);
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearsMonthData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				event.stopImmediatePropagation();
+				
+				month_combo.enabled = true;
+			 	year_combo.enabled = true;
+				
+				// Very bad hack. Checks if we call this function the first time and 
+				// gets the initial graph if it this is true.
+				if(!_buildComplete) {
+					getGraphData();
+					_buildComplete = true;
+				}
+				
+			}
+			
+			/**
+			 * RPC error handler
+			 */
+			private function loadError(event:ObjectDataEvent):void
+            {
+            	if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+            	
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+            }
+
+			
+			/**
+			 * @private 
+			 * 
+			 * Update the root node (bind setter)
+			 */
+			private function updateRootNode(vnode:IVisualNode):void
+			{
+				if(vnode != null) {
+					if(_rootNode != null) {
+						_rootNode.selected = false;
+					}
+					
+					if(vnode.rawview != null) {
+						_rootNode = vnode.view as CustomNodeRenderer;
+						_rootNode.selected = true;
+						_selGraphData.rootNode = vnode;
+						selectRootNodeInGrid();
+						
+					}
+				}
+			}
+			
+			
+			/**
+			 * 
+			 * Event handler for HTTPService. Set up and confugure the graph and it's components
+			 * 
+			 *  
+			 * */
+			
+			private function graphSetup(event:ObjectDataEvent):void {
+				
+				// Getting Data
+				//var fullGraphData:Array = event.values[0];
+				_graphXML  = new XML(event.values[0][0]);
+				Globs.broker.removeEventListener(EventsGlobals.GRAPH_DATA_LOADED, graphSetup);
+
+				/* init a graph object with the XML data */
+				_graph = new Graph("comp",false,_graphXML);
+				_graphHelper = new GraphHelper();
+				
+				var graphsXML:Array = _graphHelper.graphs(_graph as IGraph);
+				
+				// creating the graphData (component) objects
+				_graphData = new ArrayCollection();
+				var i:uint = 1;
+				for each (var graphXML:XML in graphsXML) {
+					_graphData.addItem( new GraphData("comp " + i.toString(),graphXML, _manualFilterProperty, _limit) );
+					i++;
+				}
+				
+				_selGraphData = _graphData.getItemAt(0) as GraphData;
+				_selGraphData.edges.filterFunction = manualFilter;
+				manFilter.value = _selGraphData.filterMinimum;
+				
+				vgraph.graph = _selGraphData.graph;
+				
+				/* set the default layouter type */
+				_layout = new ForceDirectedLayouter(vgraph);
+				_layout.dampingActive = true;
+				_layout.autoFitEnabled = false;
+				_layout.linkLength = 100;
+				vgraph.layouter = _layout;
+				
+				_selGraphData.layouterRunning = true;
+				vgraph.draw(VisualGraph.DF_RESET_LL);
+				
+				// update the node based measures, when a change (filtering) occurs
+				var rootNodeWatcherSetter:ChangeWatcher = 
+					BindingUtils.bindSetter(updateRootNode, vgraph, "currentRootVNode");
+				
+				updateNodeBasedMeasures();
+				
+				var rootNodeStringId:String;
+				if(_selGraphData.rootNode == null) {
+			 		rootNodeStringId = (_selGraphData.graph.nodes[0] as INode).stringid;	
+			 	} else {
+			 		rootNodeStringId = _selGraphData.rootNode.node.stringid;
+			 	}
+			 	
+				vgraph.assignNewGraph(_selGraphData.graph,false, rootNodeStringId)
+				
+				setTimeInputValues();
+				updateNodeBasedMeasures();
+				filterData();
+				 
+				// update the node based measures, when a change (filtering) occurs
+				/* var rootNodeWatcherSetter:ChangeWatcher = 
+					BindingUtils.bindSetter(updateRootNode, vgraph, "currentRootVNode"); */
+				
+				enableGetData();			
+				removeLoadView();
+
+			}
+			
+			
+			/**
+			 * @private
+			 * Changes the graph when another component has been chosen in the comboCox 
+			 */
+			private function changeGraphFromList(event:ListEvent):void
+			{
+				// getting the selected graphData
+				changeGraph(event.currentTarget.selectedItem);
+			}
+			
+			/**
+			 * @private
+			 * Change the graph (component)
+			 */
+			private function changeGraph(graphData:GraphData):void
+			{
+				// getting the selected graphData
+				restoreNormalEdge( new CloseEvent(CloseEvent.CLOSE));
+				trace("change graph from " + _selGraphData.graphId + " to " + graphData.graphId);
+				
+				manFilter.value = graphData.filterValue;
+				
+				
+				graphData.edges.filterFunction = manualFilter;
+				layoutCtrl.run = graphData.layouterRunning;
+				
+				var rootNodeStringId:String;
+				
+			 	if(graphData.rootNode == null) {
+			 		rootNodeStringId = (graphData.graph.nodes[0] as INode).stringid;
+			 	} else {
+			 		rootNodeStringId = graphData.rootNode.node.stringid;
+			 	}
+				
+				vgraph.assignNewGraph(graphData.graph,false, rootNodeStringId);
+				_selGraphData = graphData;
+				
+				setTimeInputValues();
+				filterData();
+				updateTimeInput();	 	
+			}
+			
+			/**
+			 * Get an <code>XMLListCollection</code> out of an <code>XMLList</code>
+			 */
+			/* private function createCollection(elementName:String, xml:XML):XMLListCollection
+			{
+				return new XMLListCollection( xml.descendants(elementName) );
+				
+			} */
+			
+			/**
+			 * Called when the degree of separation changed
+			 */
+			private function degreeChanged(event:Event):void
+			{
+				event.stopImmediatePropagation();
+				filterData(true);
+				
+			}
+						
+			/**
+			 * 
+			 * update the node based measures array collection (<code>_nodeBasedMeasures</code>)
+			 * which is the source for the <code>AdvancedDataGrid</code> showing the nodes and components 
+			 */
+			private function updateNodeBasedMeasures():void
+			{
+				nodes.sortableColumns = false;
+				var nodeBasedMeasuresSource:Array = [];
+				_selGraphData.updateNodeBasedMeasures(_selGraphData.graph.activeNodes);
+				
+				for each (var graphData:GraphData in _graphData) {
+					nodeBasedMeasuresSource = nodeBasedMeasuresSource.concat(graphData.nodeBasedMeasures);
+				}
+				
+				_nodeBasedMeasures = new ArrayCollection(nodeBasedMeasuresSource);
+				_nodeBasedMeasures.refresh();
+				nodeBasedMeasuresGC.source = _nodeBasedMeasures;
+				nodeBasedMeasuresGC.refresh();
+				nodes.sortableColumns = true;
+				selectRootNodeInGrid();
+			}
+			
+			/**
+			 * Highlight the selected root node in the grid
+			 */
+			private function selectRootNodeInGrid():void 
+			{
+				if(_nodeBasedMeasures.filterFunction != null) {
+		   			search_rfid.text = '';
+		   			search_rfid.prompt = "search for rfid";
+		   			_nodeBasedMeasures.filterFunction = null;
+				 	nodeBasedMeasuresGC.source = _nodeBasedMeasures;
+			    	nodeBasedMeasuresGC.refresh();
+			    }
+				
+				// if the root node is already selected in the grid, do nothing
+				if(nodes.selectedItem != null && _rootNode.data.node.stringid == nodes.selectedItem.rfid)
+				{
+					return;
+				}
+				
+				// All top level items (a.k.a nodes.treeData which is private)
+				var topLevelItems:ArrayCollection = nodes.hierarchicalCollectionView.source.getRoot() as ArrayCollection;
+				
+				// Searching the topLevelItems children for the root node data
+				// in order to know which branch to open 
+				var itemToOpen:Object;
+				var selectedItem:Object;
+				var itemToOpenIndex:int;
+				
+				for each (var topLevelItem:Object in topLevelItems) {
+					
+					if(topLevelItem.GroupLabel == _selGraphData.label) {
+						
+						itemToOpen = topLevelItem;
+						var childrens:ArrayCollection = topLevelItem.children;
+							
+						if(_rootNode != null) {
+							for each (var item:Object in childrens) {
+								if(item.rfid == _rootNode.data.node.stringid) {
+									itemToOpenIndex = childrens.getItemIndex(item);
+									selectedItem = item;
+									break;
+								}
+							}
+						}	
+					}
+									
+				}
+				
+				if( !nodes.isItemOpen(itemToOpen) )
+				{
+					nodes.collapseAll();
+					nodes.expandItem( itemToOpen ,true);
+				}
+				if(selectedItem != null) 
+				{
+					nodes.selectedItem = selectedItem;
+				}
+				
+				/* if(selectedItem != null) {				
+					nodes.selectedItem = selectedItem;
+					//nodes.scrollToIndex( _nodeBasedMeasures.getItemIndex(rootNodeBasedMeasures) );
+				} else {
+					nodes.selectedIndex = -1;
+				} */
+			
+			}
+			
+			
+			/**
+			 * Highlight the selected root node in the visual graph.
+			 * Event handler for the item click in the nodes AdvancedDataGrid.
+			 */
+			private function selectNodeInGraph(event:ListEvent):void 
+			{
+				
+				
+				// All top level items (a.k.a nodes.treeData which is private)
+				
+				var itemToSelect:Object = event.itemRenderer.data;
+				var newGraphId:String;
+				
+				
+				// If a group header is cklicked, open the branch
+				if( itemToSelect.hasOwnProperty("children") ) {
+					
+					if ( !nodes.isItemOpen(itemToSelect) ) 
+					{
+						nodes.validateNow();
+						nodes.collapseAll();
+						nodes.expandItem(itemToSelect,true,true);
+						newGraphId = itemToSelect.children[0].graphId;
+					}
+				// An item is cklicked	
+				} else {
+					
+					
+					// change graph if needed
+					if(_selGraphData.graphId != itemToSelect.graphId) 
+					{
+						
+						for each (var graphData:GraphData in _graphData) 
+						{
+							if(graphData.graphId == itemToSelect.graphId)
+							{
+								/* trace("change graph from " + _selGraphData.graphId + " to " + graphData.graphId); */
+								changeGraph(graphData);
+								break;
+							}
+						}
+					}
+					
+					
+					// Search through active nodes
+					for ( var node:Object in _selGraphData.graph.activeNodes)
+					{
+					
+						if(itemToSelect.rfid == node.stringid)
+						{
+							vgraph.currentRootVNode = node.vnode;
+							vgraph.centerNodeByStringId(node.stringid);
+							break;
+						}
+					}
+				}
+				
+			}
+			/* -----------------------------------------------
+				FILTERING GRAPH
+			----------------------------------------------- */
+			
+			/**
+			 * @private
+			 * Filter the rfid data in the nodes adg 
+			 */
+			private function filterNodesInGrid():void
+		    {
+		    		
+		    	_nodeBasedMeasures.filterFunction = filterByRfidsFilterFunction;
+		   
+			    nodeBasedMeasuresGC.source = _nodeBasedMeasures;
+			    nodeBasedMeasuresGC.refresh();
+			    nodes.expandAll();
+				
+		    }
+		    
+		    /**
+		    * @private
+		    * Filter function for the nodes adg data
+		    */
+		    private function filterByRfidsFilterFunction(item:Object):Boolean
+	        {
+	        	
+	        	// check if the item contains the string in the searchNode autoComplete
+	        	if(item.hasOwnProperty("children")) {
+	        		return true;
+	        	}
+	        	
+	        	if( item["rfid"].indexOf( search_rfid.text.toUpperCase() ) != -1 ) {
+	        		return true;	
+				}
+	        		
+	        	return false;
+	        }
+			
+			 			
+			/* -----------------------------------------------
+				FILTERING GRAPH
+			----------------------------------------------- */ 
+			/**
+			 * Apply filter for the graph
+			 * 
+			 * @param update If set to true, calls the updateNodeBasedMeasures method after the filtering.
+			 */
+			private function filterData(update:Boolean = false):void
+			{
+				
+				if(_selGraphData.edges.filterFunction == null) {
+					_selGraphData.edges.filterFunction = manualFilter;
+				}
+				
+				_selGraphData.filterValue = manFilter.value;
+				_selGraphData.edges.refresh();
+				
+				vgraph.applyFilter(_selGraphData.edges);
+				
+				if(update) {
+					callLater(updateNodeBasedMeasures);
+				}
+				
+				updateTimeInput();
+								
+			}
+			
+			
+			/**
+		 	* The filter function for the manual filter
+		 	*/ 
+			private function manualFilter(item:Object):Boolean
+	        {
+	            return (item.attribute(_manualFilterProperty) >= manFilter.value);
+	        }
+			
+			/**
+			 * Minimize / maximize the manual filter
+			 */
+			private function showHideFilter():void
+			{
+				var widthTo:uint = 23;
+				
+				if( manFilterBox.width > widthTo ) {
+				
+					manFilterBox.removeChild(manFilterSilderBox);
+					manFilterHeaderBox.removeChild(manFilterHeaderBoxSpacer);
+					//manFilterHeaderBox.removeChild(manFilterActValue);
+					manFilterHeaderBox.removeChild(timeFilterChooser);
+					manFilterHeaderBox.removeChild(manFilterHeaderBoxLabel);
+
+					manFilterBox.width = widthTo;
+					manFilterBox.height = manFilterBox.height;
+			
+					showHideFilterButton.source = rightArrow;
+					showHideFilterButton.toolTip = "Click to expand this box";
+					
+				} else {
+					
+					manFilterBox.percentWidth = 100;
+					manFilterBox.addChildAt(manFilterSilderBox,1);
+					manFilterHeaderBox.addChildAt(manFilterHeaderBoxSpacer,0);
+					//manFilterHeaderBox.addChildAt(manFilterActValue,0);
+					manFilterHeaderBox.addChildAt(timeFilterChooser,0);					
+					manFilterHeaderBox.addChildAt(manFilterHeaderBoxLabel,0);
+					
+					showHideFilterButton.source = leftArrow;
+					showHideFilterButton.toolTip = "Click to minimize this box";
+				}
+				
+			}
+			
+			/**
+			 * Minimize / maximize the data box
+			 */
+			private function showHideData():void
+			{
+				
+				if( dataBox.width > _minimizedWidth ) {
+					
+					dataBox.removeChild(dataBoxContent);
+					dataHeaderBox.removeChild(dataHeaderBoxSpacer);
+					dataHeaderBox.removeChild(dataHeaderBoxLabel);
+					
+					_maximizedDataPercentWidth = dataBox.percentWidth;
+					dataBox.width = _minimizedWidth;
+					showHideDataButton.source = rightArrow;
+					showHideDataButton.toolTip = "Click to expand this box";
+					
+				} else {
+					
+					dataBox.addChildAt(dataBoxContent,1);
+					dataHeaderBox.addChildAt(dataHeaderBoxSpacer,0);
+					dataHeaderBox.addChildAt(dataHeaderBoxLabel,0);
+					
+					dataBox.percentWidth = _maximizedDataPercentWidth;
+					showHideDataButton.source = leftArrow;
+					showHideDataButton.toolTip = "Click to minimize this box";
+				}
+				
+			}
+			
+			
+			/**
+			 * 
+			 * Show load pop up.
+			 * @param loadLabel String to show in the load popup 
+			 */ 
+			private function loadView(loadLabel:String):void
+			{
+				if(_loadWin == null || !_loadWin.open) {
+					_loadWin = new LoadPopUp();
+					_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
+					_loadWin.loadLabel = loadLabel;
+					_loadWin.open = true;
+				} 
+				
+				_loadWin.loadLabel = loadLabel;	
+			}
+			
+			/**
+			 * 
+			 * Remove load view popup
+			 */
+			private function removeLoadView():void
+			{
+				if(_loadWin.open) {
+					_loadWin.open = false;
+					_loadWin.closeThis();
+				}	
+			} 
+			
+			/**
+			 * Refresh the vgraph 
+			 */ 
+			private function graphRefresh():void
+			{
+				
+				layoutCtrl.run = _selGraphData.layouterRunning;
+				
+				// assign new graph and filter data
+				if(_selGraphData.rootNode == null) {
+			 		vgraph.assignNewGraph(_selGraphData.graph,false);
+			 	} else {
+			 		vgraph.assignNewGraph(_selGraphData.graph,false, _selGraphData.rootNode.node.stringid);
+			 	}
+			 	
+			 	// filter the data
+			 	filterData();
+			 	
+			 	// setting root node
+			 	var rootNode:IVisualNode;
+			 	if(_selGraphData.rootNode == null) {
+			 		rootNode = (_selGraphData.graph.nodes[0] as INode).vnode;	
+			 	} else {
+			 		rootNode = _selGraphData.rootNode;
+			 	}
+			 	
+			 	updateRootNode(rootNode);
+			 	//vgraph.currentRootVNode = rootNode;
+			}
+			
+			/**
+			 * @private
+			 */
+			private function enableGetData():void
+			{
+				if(year_combo.selectedItem.id != _year || month_combo.selectedItem.id != _month) {
+					getDataButton.enabled = true;
+					getDataButton.alpha = 1;
+					getDataButton.filters = [reloadGlow];
+					getDataButton.toolTip = "Click to get data for the selected year and month";
+					cancelBut.enabled = true;
+					cancelBut.alpha = 1;
+					cancelBut.toolTip = "Click to reset year/month selection";
+					
+				} else {
+					getDataButton.enabled = false;
+					getDataButton.alpha = 0.3;
+					getDataButton.filters = [];
+					getDataButton.toolTip = "Change year and / or month to enable this button";
+					cancelBut.enabled= false;
+					cancelBut.alpha= 0.3;
+					cancelBut.toolTip="Change year and / or month to enable this button";
+				}
+			}
+			
+			/**
+			 * Reset the get year/month combo
+			 */
+			private function resetGetData():void
+			{
+					for each (var year:Object in _yearsData) {
+						if(year.id == _year) {
+							year_combo.selectedItem = year;
+							month_combo.dataProvider = _dataYearsMonths[_year];
+						}
+					}
+				
+					for each (var month:Object in _dataYearsMonths[_year]) {
+						if(month.id == _month) {
+							month_combo.selectedItem = month;
+						}
+					}
+					
+					enableGetData();	
+			}
+			
+			/**
+			 * Set the max and min values for the time input based on the selected graph.
+			 */
+			private function setTimeInputValues():void
+			{
+				var timeMaxObj:Object = DateHelpers.secToTimeObject(_selGraphData.filterMaximum);
+				var timeMinObj:Object = DateHelpers.secToTimeObject(_selGraphData.filterMinimum);
+				
+				timeFilterChooser.maxHour = timeMaxObj.hour;
+				timeFilterChooser.minHour = timeMinObj.hour;
+				
+				timeFilterChooser.maxMinute = timeMaxObj.minute;
+				timeFilterChooser.minMinute = timeMinObj.minute;
+				
+				timeFilterChooser.maxSecond = timeMaxObj.second;
+				timeFilterChooser.minSecond = timeMinObj.second;
+				 
+			}
+			
+			/**
+			 * Update the time input values.
+			 */
+			private function updateTimeInput():void
+			{
+				timeFilterChooser.valueInSec = manFilter.value;
+			}
+			
+			/**
+			 * Set the filter value to the value of the time text inpunt.
+			 */ 
+			private function updateManFilter(event:Event):void
+			{
+				manFilter.value = timeFilterChooser.valueInSec;
+				filterData(true);
+				event.stopImmediatePropagation();
+			}
+			
+			
+			// ------------------------------------------------------------------------------------------------------------
+			 //
+			 //	export  
+			 //	
+			 // ------------------------------------------------------------------------------------------------------------
+			 
+			 private function export(event:ListEvent):void
+			 {
+			 	
+			 	switch(event.target.selectedItem.func)
+			 	{
+			 		case 'exportExcel':
+			 			exportToExcel();
+			 		break;
+			 		case 'exportPng':
+			 			exportPng();
+			 		break;
+			 		case 'exportNetdrawAll':
+			 			exportAllNetdraw();
+			 		break;
+			 		case 'exportNetdrawComp':
+			 			exportComponentNetdraw();
+			 		break;
+			 	}
+			 	
+			 	export_combo.selectedIndex = 0;
+			 	
+			 }
+			
+			/**
+			 * Export graph as a png file
+			 */
+			 private function exportToExcel():void
+			 {
+			 	// grid proprties
+			 	var gridId:String = ConfigXML..flex..graph.graphData.grid[0].@id;
+			 	var filename:String = ConfigXML..flex..graph.graphData.grid[0].@filename;
+			 	
+			 	var nodesDG:DataGrid = new DataGrid();
+			 	nodesDG.dataProvider = _nodeBasedMeasures;
+			 	
+			 	// exporter
+			 	var Export:ExcelExport = new ExcelExport(nodesDG, filename + '_' + _month + '_' + _year, gridId);
+
+			 }
+			
+			/**
+			 * Export graph as a png file
+			 */
+			 private function exportPng():void
+			 {
+			 	
+			 	var bd:BitmapData = new BitmapData( vgraph.width, vgraph.height );
+			 	var m:Matrix = new Matrix(1,0,0,1,vgraph.offsetX*vgraph.scaleX,vgraph.offsetY*vgraph.scaleY);
+			 	m.scale(vgraph.scaleX, vgraph.scaleY); 
+			 	bd.draw( vgraph, m);
+			 	var ba:ByteArray = new PNGEncoder().encode(bd);
+			 	
+			 	var snapshot:ImageSnapshot = new ImageSnapshot(vgraph.width,vgraph.height,ba, "PNGEncoder");
+			 	
+			 	var exportPng:PngExport = new PngExport( snapshot, 'graph_' + _month.toString() + '_' + _year.toString() + '_' + _selGraphData.graphId );
+			 }
+			 
+			 /**
+			 * Export graph to netdraw
+			 */
+			 private function exportAllNetdraw():void
+			 {
+			 	var exportNetdraw:NetdrawExport = new NetdrawExport( _graphXML, 'graphData_' + _month + '_' + _year );
+			 }
+			 
+			 /**
+			 * Export graph to netdraw
+			 */
+			 private function exportComponentNetdraw():void
+			 {
+			 	var visibleCompXml:XML = <graph></graph>;
+			 	
+			 	for each (var node:Node in _selGraphData.graph.activeNodes) {
+			 		visibleCompXml.appendChild( node.data );
+			 	}
+			 	
+			 	for each (var edge:Edge in _selGraphData.graph.activeEdges) {
+			 		visibleCompXml.appendChild( edge.data );
+			 	}
+			 	
+			 	var exportNetdraw:NetdrawExport = new NetdrawExport( visibleCompXml, 'graphData_' + _selGraphData.graphId+ '_' +  _month + '_' + _year );
+			 }
+			 
+			 /**
+			 * 
+			 * On shift cklick, copy clicked cell value to te clipboard
+			 */
+			private function copyToClipboard(event:MouseEvent):void
+			{
+				if( event.shiftKey && event.target.hasOwnProperty('data') &&
+					 event.target.hasOwnProperty('listData') && 
+					 event.target.data.hasOwnProperty( event.target.listData.dataField )
+					)
+				{
+					var value:String = event.target.data[ event.target.listData.dataField ];
+					
+					if(value != null && value != '')
+					{
+						System.setClipboard(value);
+						var clipboardPopUp:CopiedToClipboardPopUp = CopiedToClipboardPopUp(PopUpManager.createPopUp(this, CopiedToClipboardPopUp,false))
+						clipboardPopUp.value = value; 
+					}
+					
+				}
+			}
+			 
+			 // ------------------------------------------------------------------------------------------------------------
+			 //
+			 //	EDGE DATA  
+			 //	
+			 // ------------------------------------------------------------------------------------------------------------ 
+			 
+			 /**
+			 * Handles edge label mouse clicks, and start getting the edge data.
+			 * 
+			 */ 
+			 private function showEdgeData(event:LoadEdgeDataEvent):void
+			 {
+
+			 	restoreNormalEdge(new Event(""));
+
+			 	_edgeDetail = event.edge as CustomEdgeLabelRenderer;
+			 	_edgeInfo = _edgeDetail.data as VisualEdge;
+			 	
+			 	var fromNodeId:String = _edgeInfo.data.@fromID;
+			 	var toNodeId:String = _edgeInfo.data.@toID;
+			 	
+			 	var getEdgeData:GetGraphData = new GetGraphData();
+			 	getEdgeData.getEdgeData(_year, _month, fromNodeId, toNodeId);
+			 	Globs.broker.addEventListener(EventsGlobals.EDGE_DATA_LOADED,showEdgeDetails);
+			 
+			 }
+			 
+			 /**
+			 * Edge data result handler.
+			 */
+			 private function showEdgeDetails(event:ObjectDataEvent):void
+			 {
+			 	
+			 	var edgeData:Array = event.values[0][0];
+			 	_edgeData = new ArrayCollection(edgeData);
+			 	Globs.broker.removeEventListener(EventsGlobals.EDGE_DATA_LOADED, showEdgeDetails);
+
+			 	//var binnedData:ArrayCollection = binData(edgeData, 'dt_sec', 50);
+			 	//trace('binned');
+			 	
+			 	openEdgeDataPanel();
+			 		
+			 }
+			 
+			 /**
+			 * Open edge data popup
+			 */
+			 private function openEdgeDataPanel():void
+			 {
+			 	if(!_edgeDataPanel.open) {
+			 		_edgeDataPanel = EdgeDataPanel(PopUpManager.createPopUp(Application.application as DisplayObject, EdgeDataPanel, false));
+			 		_edgeDataPanel.addEventListener(CloseEvent.CLOSE, restoreNormalEdge);
+			 	}
+			 	
+			 	_edgeDataPanel.edgeData = _edgeData;
+			 	_edgeDataPanel.edgeInfo = _edgeInfo;
+			 	_edgeDataPanel.year = _year;
+			 	_edgeDataPanel.month = _month;
+			 }
+			 
+			 /**
+			 * Remove the highlight style from the previously highlighted edge.
+			 */
+			 private function restoreNormalEdge(event:Event):void
+			 {
+			 	if(_edgeDetail) {
+			 		_edgeDetail.edgeDataClosed();
+			 		_edgeDetail = null;
+			 	}
+			 	
+			 }
+			 
+			 /**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = componentXML.info;
+			}
+
+			
+		]]>
+	</mx:Script>					
+
+	<!-- <mx:Style source="styles.css"/> -->
+	
+	<!-- Effects -->
+	<mx:Resize id="resizeBox" duration="500"/>
+	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
+	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
+	
+	<mx:Fade id="fastFade" alphaFrom="1" alphaTo="0" duration="400" target="{dataBox}"/>
+	
+	<!-- Filters -->
+	<mx:GlowFilter id="reloadGlow" color="#01a601" blurX="8" blurY="8" alpha="0.75" />
+	
+	<!-- Formatters -->
+	<mx:NumberFormatter id="nbmFormatter" precision="3" rounding="nearest" />
+	
+	<mx:Canvas width="100%" height="100%" backgroundColor="#FFFFFF" borderStyle="none"
+		verticalScrollPolicy="off" horizontalScrollPolicy="off">		
+		<mx:Canvas id="graphCnvs" width="100%" height="100%" verticalScrollPolicy="off" horizontalScrollPolicy="off" />
+		<ravis:VisualGraph id="vgraph" 
+				left="0" right="0" top="0" bottom="0"
+				backgroundColor="#FFFFFF" alpha="1"
+				itemRenderer="components.renderers.CustomNodeRenderer"
+				edgeLabelRenderer="classes.renderer.CustomEdgeLabelRenderer"
+				displayEdgeLabels="{_selGraphData.displayEdgeLabels}"
+				showHistory="false"
+				edgeRenderer="{new CustomEdgeRenderer(vgraph.edgeDrawGraphics)}"
+				autoLayout="true"
+				/>
+		<!-- CONTROLS -->
+	
+		<components:SuperPanel title="Layout &amp; View Options" id="layoutControls" enableResize="false" showControls="false"
+			styleName="SuperPanel" 
+			x="{this.graphCnvs.width - this.layoutControls.width -5}" 
+			y="30" 
+			width="200" height="335" verticalScrollPolicy="off"> 
+			<mx:VBox width="100%" height="100%" styleName="graphControlBox" verticalGap="10">
+				<graph:LinkLength id="linkLength" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" enabled="true" />
+				<graph:DegreesOfSeparation id="dosSlider" width="100%" bottom="0" left="5" vgraph="{vgraph}" graphData="{_selGraphData}" />
+				<graph:Zoom id="zoomCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" />
+				<graph:ScaleLabels id="scaleCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}"/>
+				<graph:ShowEdgeLabels id="showEdgeLabels" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" />
+				<mx:VBox horizontalGap="5" width="100%">
+					<graph:LayoutSelector id="layoutCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}"/>
+					<mx:Button id="centerButton" styleName="centerButton" width="100%"
+							click="{vgraph.scroll(-vgraph.origin.x, -vgraph.origin.y); vgraph.refresh() }"  
+							label="recenter graph" 
+							icon="{centerIcon}" 
+							toolTip="re-center the graph in the view area"/>
+					<mx:Button id="refreshButton" styleName="centerButton" width="100%"
+						click="graphRefresh()"  
+						label="refresh graph" 
+						icon="{refreshIcon}" 
+						toolTip="refresh the graph"/>	
+				</mx:VBox>
+			</mx:VBox>
+		</components:SuperPanel>
+		
+		<!-- help button -->
+		<mx:Image source="{helpIcon}" 
+			x="{this.graphCnvs.width - this.showInfoBut.width -5}" 
+			y="5" 
+ 	 		id="showInfoBut" toolTip="show info &amp; help for this component"
+ 	 		enabled="false"
+ 	 		visible="false" 
+ 	 		buttonMode="true" useHandCursor="true" mouseChildren="false" click="showInfo()"/>
+		
+		<!-- manual edge filter -->
+		<!-- <mx:Label id="manFilterActValue" text="{DateHelpers.secToTime(manFilter.value,true)}" styleName="headerLabelBright" color="#FA6706" addedEffect="{fadeIn}" removedEffect="{fadeOut}"/> --> 
+		<mx:VBox id="manFilterBox" left="0" bottom="0" height="65" width="100%"  verticalGap="3" paddingLeft="5" paddingRight="5" paddingBottom="3" paddingTop="3"
+			backgroundColor="#000000" backgroundAlpha="0.75" resizeEffect="{resizeBox}" >
+			<mx:HBox width="100%" id="manFilterHeaderBox"
+				horizontalGap="10" verticalAlign="middle">
+				<mx:Label text="Filter Edges:" styleName="headerLabelBright" id="manFilterHeaderBoxLabel" addedEffect="{fadeIn}" removedEffect="{fadeOut}"/>
+				<graph:TimeFilterValueChooser id="timeFilterChooser" textColor="#000000" addedEffect="{fadeIn}" removedEffect="{fadeOut}" 
+					visible="{!vgraph.egoNetworkView}"
+					/>
+				<mx:Spacer width="100%" id="manFilterHeaderBoxSpacer"/>
+				<mx:Image id="showHideFilterButton" source="{leftArrow}" toolTip="Click to minimize this box" click="showHideFilter()"/>
+			</mx:HBox>
+			<mx:HBox width="100%" horizontalGap="1" id="manFilterSilderBox" addedEffect="{fadeIn}" removedEffect="fadeOut">
+				<mx:Label id="minVal" text="{DateHelpers.secToTime(_selGraphData.filterMinimum, 'short')}" styleName="genLabelBrightSmall"/>
+				<mx:HSlider id="manFilter" styleName="filterSliderInverse" width="100%"
+					allowTrackClick="false"
+					minimum="{_selGraphData.filterMinimum}" maximum="{_selGraphData.filterMaximum}"
+					dataTipFormatFunction="{DateHelpers.secToTime}" 
+					snapInterval="1" liveDragging="true"
+					tickValues="[]"
+					change="filterData()"
+					thumbPress="fastFade.play()"
+					thumbRelease="fastFade.play(null,true);filterData(true)"
+					enabled="{!vgraph.egoNetworkView}" alpha="{vgraph.egoNetworkView ? 0.3 : 1.0}"
+					toolTip="{vgraph.egoNetworkView ? 'Not usable in Ego-Centric Network view' : 'Slide to filter graph edge weight (= time in hh:mm:ss)'}"/>
+				<mx:Label id="maxVal"  text="{DateHelpers.secToTime(_selGraphData.filterMaximum, 'short')}" styleName="genLabelBrightSmall" />
+			</mx:HBox>
+		</mx:VBox>
+
+		<!-- dataBox -->
+		<mx:VBox id="dataBox" left="0"  top="0" bottom="66"  width="40%" verticalGap="3" paddingLeft="5" paddingRight="5" paddingBottom="3" paddingTop="3"
+			backgroundColor="#000000" backgroundAlpha="0.75" resizeEffect="{resizeBox}">
+			<mx:HBox width="100%" id="dataHeaderBox" 
+				doubleClickEnabled="true" doubleClick="showHideData()">
+				<mx:Label text="Graph Data" styleName="headerLabelBright" id="dataHeaderBoxLabel" addedEffect="{fadeIn}" removedEffect="{fadeOut}"/>
+				<mx:Spacer width="100%" id="dataHeaderBoxSpacer"/>
+				<mx:Image id="showHideDataButton" source="{leftArrow}" toolTip="Click to minimize this box" click="showHideData()"/>
+			</mx:HBox>
+			<mx:VBox id="dataBoxContent" width="100%" height="100%" addedEffect="{fadeIn}" removedEffect="{fadeOut}">
+				<mx:HBox width="100%" horizontalGap="3" verticalAlign="middle">
+					<mx:Label styleName="graphControlLabel" text="Year:" height="18"/>
+					<mx:ComboBox id="year_combo" dataProvider="{_yearsData}" styleName="analysisCombo" editable="false" height="18" width="65" labelField="id"
+						change="{enableGetData(); month_combo.dataProvider = _dataYearsMonths[ year_combo.selectedItem.id];}"/>
+				
+					<mx:Spacer width="10" />
+					<mx:Label styleName="graphControlLabel" text="Month:" height="18"/>
+					<mx:ComboBox id="month_combo" styleName="analysisCombo" editable="false" height="18" width="100" rowCount="12"
+						change="enableGetData()"/>					
+						
+					<mx:Spacer width="10" />
+					<mx:Button id="getDataButton" styleName="centerButton"
+						height="20"
+						click="getGraphData()"  
+						label="get graph data" 
+						icon="{reloadIcon}" />
+					<mx:Button id="cancelBut" styleName="normButton"
+						height="20" 
+						label="reset" 
+						click="resetGetData()"
+						icon="{clearIcon}" />
+						
+				</mx:HBox>
+				
+				<mx:HRule width="100%" strokeColor="#FFFFFF" strokeWidth="1"/>
+				<mx:HBox width="100%" horizontalGap="3" verticalAlign="middle">
+					<mx:Label text="Node Based Measures (binary):" styleName="graphControlLabel" />
+					<mx:Spacer width="100%" />
+					<hc:Chooser id="search_rfid" dataProvider="{_nodeBasedMeasures}" labelField="rfid" width="150"
+						prompt="search for rfid"
+						borderStyle="none"
+						matchType="anyPart"
+						change="filterNodesInGrid()"/>
+				</mx:HBox>
+				
+				<mx:AdvancedDataGrid id="nodes" width="100%" height="100%" 
+					styleName="graphGrid"
+					displayDisclosureIcon="true"
+					defaultLeafIcon="{null}"
+					folderOpenIcon="{null}"
+					folderClosedIcon="{null}"
+					itemClick="selectNodeInGraph(event)"
+					toolTip="click an item to show it in the graph ">
+					
+					<mx:dataProvider>
+						<mx:GroupingCollection id="nodeBasedMeasuresGC" source="{_nodeBasedMeasures}">
+								<mx:Grouping id="nodeBasedMeasuresGrouping">
+									<mx:GroupingField name="label">
+										<mx:summaries>
+                     						<mx:SummaryRow summaryPlacement="group">
+			                         			<mx:fields>
+			                         				<mx:SummaryField dataField="rfid" operation="COUNT"/>
+			                             			<mx:SummaryField dataField="path_length" operation="AVG"/>
+			                             			<mx:SummaryField dataField="clust_coeff" operation="AVG"/>
+			                             			<mx:SummaryField dataField="degree" operation="AVG"/>
+			                             			<mx:SummaryField dataField="betweenness" operation="AVG"/>
+                         						</mx:fields>
+                       						</mx:SummaryRow>
+                     					</mx:summaries>
+                     				</mx:GroupingField>
+								</mx:Grouping>
+						</mx:GroupingCollection>
+					</mx:dataProvider>
+					<mx:columns>
+						<mx:AdvancedDataGridColumn dataField="label" headerText="component" />
+						<mx:AdvancedDataGridColumn dataField="rfid" headerText="rfid" />
+						<mx:AdvancedDataGridColumn dataField="path_length" headerText="path lenght" formatter="{nbmFormatter}"/>
+						<mx:AdvancedDataGridColumn dataField="clust_coeff" headerText="clustering" formatter="{nbmFormatter}"/>
+						<mx:AdvancedDataGridColumn dataField="degree" headerText="degree" formatter="{nbmFormatter}" />
+						<mx:AdvancedDataGridColumn dataField="betweenness" headerText="betweenness" formatter="{nbmFormatter}" />
+					</mx:columns>
+				</mx:AdvancedDataGrid>
+				<mx:HRule width="100%" strokeColor="#FFFFFF" strokeWidth="1"/>
+				<mx:HBox width="100%" height="30" verticalAlign="middle">
+
+					<mx:Label styleName="graphControlLabel" text="Export:" height="18"/>
+					<mx:ComboBox id="export_combo" labelField="label" styleName="analysisCombo" height="18" change="export(event)" >
+						<mx:ArrayCollection>
+							<mx:Object label="(please choose an export method)" func="export" />
+							<mx:Object label="Export as Excel file (.xls)" func="exportExcel" />
+							<mx:Object label="Export displayed graph as image (.png)" func="exportPng" />
+							<mx:Object label="Export all components as Netdraw file (.vna)" func="exportNetdrawAll" />
+							<mx:Object label="Export displayed graph as Netdraw file (.vna)" func="exportNetdrawComp" />
+						</mx:ArrayCollection>
+					</mx:ComboBox>
+				</mx:HBox>
+			</mx:VBox>
+		</mx:VBox>
+	</mx:Canvas>
+</mx:VBox>

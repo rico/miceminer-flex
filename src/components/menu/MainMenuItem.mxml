@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	height="100%"
+	backgroundAlpha="0"
+	backgroundColor="#FFFFFF"
+	borderThickness="0"
+	useHandCursor="true"
+	buttonMode="true"
+	mouseChildren="false"
+	borderStyle="solid"
+	cornerRadius="6"
+	verticalGap="0" horizontalAlign="center"
+	verticalScrollPolicy="off" horizontalScrollPolicy="off"  
+	toolTip="{toolTip}"
+	mouseOver="this.setStyle('backgroundAlpha','0.8')"
+	mouseOut="this.setStyle('backgroundAlpha','0')">
+	
+	<mx:Script>
+		<![CDATA[
+			[Bindable]
+			public var itemIcon:Class;
+			[Bindable]
+			public var itemLabel:String;
+		]]>
+	</mx:Script>			
+				
+	<mx:Image source="{itemIcon}" />
+	<mx:Label text="{itemLabel}" styleName="compLabel" />
+	
+</mx:VBox>

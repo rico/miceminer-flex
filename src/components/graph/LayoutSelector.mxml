@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+ *
+ * The MIT License
+ *
+ * Copyright (c) 2008
+ * United Nations Office at Geneva
+ * Center for Advanced Visual Analytics
+ * http://cava.unog.ch
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ * 
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ * 
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+-->
+
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" horizontalGap="2" horizontalAlign="middle">
+	<mx:Style>
+	 .pause {
+			upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+			cornerRadii: 3, 3, 3, 3;
+			borderColors: #CCCCCC, #CCCCCC;
+		 	overBorderColors: #CCCCCC, #CCCCCC;
+		 	selectedBorderColors: #CCCCCC, #CCCCCC;
+		 	borderThickness: 1;
+		 	borderAlpha: 1;
+		 	fillColors: #878787, #444444;
+		 	fillAlphas: 0.1, 0.6;
+		 	fillColorRatios: 0, 100;
+		 	overFillColors: #878787, #666666;
+		 	overFillAlphas: 0.5, 0.5;
+		 	overFillColorRatios: 0, 141;
+		 	selectedFillColors: #FFFFFF, #FFFFFF;
+		 	selectedFillAlphas: 0.5, 0.5;
+		 	selectedFillColorRatios: 0, 255;
+		 	highlightAlphas: 0, 0;
+		 	color: #FFFFFF;
+		 	textRollOverColor: #FFFFFF;
+		 	font-weight:normal;
+		 	font-size: 11;
+		 	fontFamily: 'MyriadPro';
+	        }
+	        
+        .play {
+			upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+		    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+			cornerRadii: 3, 3, 3, 3;
+			borderColors: #01a601, #01a601;
+		 	overBorderColors: #01a601, #01a601;
+		 	selectedBorderColors: #01a601, #01a601;
+		 	borderThickness: 1;
+		 	borderAlpha: 1;
+		 	fillColors: #878787, #444444;
+		 	fillAlphas: 0.1, 0.6;
+		 	fillColorRatios: 0, 100;
+		 	overFillColors: #878787, #666666;
+		 	overFillAlphas: 0.5, 0.5;
+		 	overFillColorRatios: 0, 141;
+		 	selectedFillColors: #FFFFFF, #FFFFFF;
+		 	selectedFillAlphas: 0.5, 0.5;
+		 	selectedFillColorRatios: 0, 255;
+		 	highlightAlphas: 0, 0;
+		 	color: #FFFFFF;
+		 	textRollOverColor: #FFFFFF;
+		 	font-weight:normal;
+		 	font-size: 11;
+		 	fontFamily: 'MyriadPro';
+        }
+	</mx:Style>
+	
+	<mx:GlowFilter id="playGlow" color="#01a601" blurX="8" blurY="8" alpha="0.75" /> 
+
+	<mx:Button id="runPause" styleName="{run ? 'play' : 'pause'}" click="{ run ? run = false : run = true }" width="100%"
+		filters="{run ? [playGlow] : []}" 
+		label="{run ? 'Layout algorithm running' : ' Layout algorithm paused'}" 
+		icon="{run ? playIcon : pauseIcon}" 
+		toolTip="{run ? 'Click to pause the algorithm and drag nodes around' : 'Click to run force directed layout algorithm'}"
+		/>
+		
+	<mx:Script>	
+		<![CDATA[
+			import classes.datastructures.GraphData;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.IVisualNode;
+			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
+			import mx.utils.ObjectUtil;
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualGraph;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.ILayoutAlgorithm;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
+			import org.un.cava.birdeye.ravis.graphLayout.layout.ForceDirectedLayouter;
+			
+			/**
+			 * The <code>vgraph</code> the control acts on.
+			 */ 
+			public var vgraph:VisualGraph;
+			
+			/**
+			 * The <code>GraphData</code> instance this control acts on.
+			 * 
+			 * @see classes.datastructures.GraphData
+			 */ 
+			public var graphData:GraphData;
+			
+			[Bindable]
+			private var _run:Boolean = true;
+			
+			[Bindable]
+			[Embed(source="/assets/img/control_pause.png")]
+            private var pauseIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/control_play.png")]
+            private var playIcon:Class;
+            
+            /**
+			 * Switch between the <code>ForceDirectedLayouter</code> and the <code>DirectPlacementLayouter</code>.
+			 */
+			[Bindable]
+			public function get run():Boolean
+			{
+				return _run;
+			}
+            
+            /**
+            * @private
+            */
+            public function set run(run:Boolean):void
+            {
+            	_run = run;
+            	graphData.layouterRunning = _run;
+            	
+				var layouter:ILayoutAlgorithm;
+								
+				/* check if we have a vgraph at all */
+				if(vgraph == null) {
+					trace("Cannot change Layouter without vgraph.");
+					return;
+				}
+	
+				/* kill off animation in old layouter if present */
+				if(vgraph.layouter != null) {
+					vgraph.layouter.resetAll();
+					/* remove also existing references thus
+					 * destroying the object (maybe this is not needed?) */
+					vgraph.layouter = null;
+				}
+	
+				/* now choose the selected layouter */
+				if(_run) {
+					storeNodeLocations();
+					layouter = new ForceDirectedLayouter(vgraph);
+					
+				} else {
+					
+					storeNodeLocations();
+					layouter = new DirectPlacementLayouter(vgraph);
+				}
+					
+				vgraph.layouter = layouter;
+				vgraph.draw(); // run the layout
+            	
+            }
+			
+			private function storeNodeLocations():void
+			{
+				for each (var vnode:IVisualNode in vgraph.visibleVNodes) {
+						
+						vnode.data.@tempX = vnode.viewX + vnode.view.width / 2;
+						vnode.data.@tempY = vnode.viewY + vnode.view.height / 2;	
+					}
+			}
+			
+		]]>
+	</mx:Script>
+</mx:HBox>

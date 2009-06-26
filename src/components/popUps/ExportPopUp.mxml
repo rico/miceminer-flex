@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	styleName="dataLoader"	
+	horizontalAlign="center"
+	verticalAlign="middle"
+	horizontalGap="5"
+	initialize="Globs.broker.addEventListener(EventsGlobals.EXPORT_COMPLETE,downloadFile);"
+	creationComplete="initComp()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.managers.CursorManager;
+			import mx.events.EffectEvent;
+			import classes.GlobalVars;
+			import mx.controls.Spacer;
+			import mx.controls.LinkButton;
+			import mx.controls.Alert;
+			import classes.rpc.GetDataByMethod;
+		
+			import classes.events.*;
+			import mx.managers.PopUpManager;
+			import flash.net.URLRequest;
+			
+			/**
+			 * Dispatched when the cancel button is clicked.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="cancelLoad", type="flash.events.Event")]
+			
+			[Bindable]
+			[Embed(source="/assets/img/close.png")]
+            private var cancelIcon:Class;
+			
+			private var _cancelBut:LinkButton;
+			
+			
+			private var _fileRef:FileReference;
+			private var _request:URLRequest;
+			private var _deleteMethod:String;
+			
+			
+			private function initComp():void
+			{
+				
+				PopUpManager.centerPopUp(this);
+				showHide.play([this]);
+				
+				_deleteMethod = GlobalVars.getInstance().ConfigXML.flex.helpers.deleteFile.@method;
+				
+			}
+			
+			/**
+			 * The text shown as the <code>ProgressBar</code> label.
+			 */
+			public function set exportLabel(text:String):void
+			{
+				export_bar.label = text;
+				export_bar.invalidateSize();
+			} 
+			
+			
+			/**
+			 * @private
+			 * 
+			 * download the file
+			 */
+			private function downloadFile(event:ObjectDataEvent):void
+			{
+				
+				_request = new URLRequest(event.values[0]);
+				//_remote_filesize 
+				
+				Globs.broker.removeEventListener(EventsGlobals.EXPORT_COMPLETE,downloadFile);
+				event.stopImmediatePropagation();
+				
+				_fileRef = new FileReference();
+				_fileRef.download(_request);
+				_fileRef.addEventListener(Event.CANCEL, downloadHandler);
+				_fileRef.addEventListener(Event.COMPLETE, downloadHandler);
+				_fileRef.addEventListener(Event.OPEN, downloadHandler);
+				_fileRef.addEventListener(Event.SELECT, downloadHandler);
+				_fileRef.addEventListener(HTTPStatusEvent.HTTP_STATUS, downloadHandler);
+				_fileRef.addEventListener(IOErrorEvent.IO_ERROR, downloadHandler);
+				_fileRef.addEventListener(SecurityErrorEvent.SECURITY_ERROR, downloadHandler);
+			}
+			
+			private function downloadHandler(event:Event):void {
+				
+				switch(event.type)
+				{
+					// delete file from the server when the user hits the canel button or the download is complete
+					case 'complete':
+					case 'cancel':
+						Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,fileRemoved);
+						Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,fileRemovalFailed);
+						var delFileMethod:GetDataByMethod = new GetDataByMethod(_deleteMethod, [_request.url]);
+					break;
+					case 'open':
+					case 'select':
+						exportLabel = 'downloading file ...';
+					break;
+					case 'ioError':
+					case 'securityError':
+						Alert.show("ExportPopUp [downloadHandler]: An error occured => " + event.type.toString());
+					break;	
+				}
+				
+			}
+			
+			/**
+			 * Set to <code>true</code> to have a cancel button which dispatches a bubbeling <code>cancelLoad</code> event when clicked.
+			 * 
+			 * @param cancel Show cancel button or not.
+			 */
+			public function set cancelable(cancel:Boolean):void
+			{
+				if(cancel) {
+					
+					_cancelBut = new LinkButton();
+					_cancelBut.id = 'cancelBut';
+					_cancelBut.setStyle("icon", cancelIcon);
+					_cancelBut.setStyle("rollOverColor", 0xFFFFFF);
+					_cancelBut.setStyle("selectionColor", 0xFFFFFF);
+					_cancelBut.addEventListener(MouseEvent.CLICK, cancelLoad);
+					_cancelBut.toolTip = "Click to Cancel Data Export"; 
+					
+					addChild(_cancelBut);
+					
+				} else {
+					if( _cancelBut != null && this.contains(_cancelBut) ) {
+						this.removeChild( _cancelBut);
+						
+					}
+				}
+			}
+			
+			/**
+			 * Cancel the export process.
+			 */
+			private function cancelLoad(event:MouseEvent):void
+			{
+				if(_fileRef) {
+					_fileRef.dispatchEvent( new Event(Event.CANCEL) );
+				}
+				
+				dispatchEvent( new Event("cancelLoad") );
+				closeThis();
+			}
+			
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showHide.play([this],true);
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				this.removeEventListener(MouseEvent.MOUSE_OVER, removeBusyCursor);
+				this.removeEventListener(MouseEvent.MOUSE_OUT, setBusyCursor);
+				CursorManager.removeBusyCursor();
+				
+				PopUpManager.removePopUp(this);	
+			}
+			
+			private function fileRemoved(event:ObjectDataEvent):void
+			{
+				var result:Number = event.values[0];
+				closeThis();
+				
+				if( result != 1) {
+					Alert.show('could not remove file', 'File removal failed');
+				}
+				
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,fileRemovalFailed);
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,fileRemoved);
+            	closeThis();
+            	
+			}
+			
+			private function fileRemovalFailed(event:ObjectDataEvent):void
+			{
+				closeThis();
+				Alert.show(event.values[0].toString(), 'File removal failed');
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,fileRemovalFailed);
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,fileRemoved);
+			}
+			
+			/**
+			 * @private
+			 */
+			private function setBusyCursor(event:MouseEvent):void
+			{
+				CursorManager.setBusyCursor();
+			}
+			
+			/**
+			 * @private
+			 */
+			private function removeBusyCursor(event:MouseEvent):void
+			{
+				CursorManager.removeBusyCursor();
+			}
+			
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Parallel id="showHide">
+		<mx:children>
+			<mx:Fade alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
+		</mx:children>
+	</mx:Parallel>
+	
+	<mx:ProgressBar id="export_bar" styleName="dataLoaderPB"
+		labelPlacement="bottom" height="20" indeterminate="true"/>	
+	
+</mx:HBox>

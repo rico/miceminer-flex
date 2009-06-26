@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	styleName="dataLoader"	
+	horizontalAlign="center"
+	verticalAlign="middle"
+	horizontalGap="10"
+	width="400"
+	paddingTop="20"
+	paddingBottom="20"
+	paddingRight="20"
+	paddingLeft="20"
+	verticalScrollPolicy="off"
+	horizontalScrollPolicy="off"
+	creationComplete="initComp()"
+	>
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.helpers.DateHelpers;
+			import mx.events.EffectEvent;
+			import mx.managers.CursorManager;
+		
+			import classes.events.*;
+			import mx.managers.PopUpManager;
+			
+			/**
+			 * Dispatched when this popUp is closed by calling the <code>closeThis</code> method, either
+			 * from ooutside or by clicking on the Close <code>button</code>.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="close", type="flash.events.Event")]
+			 
+			
+			/**
+			 * The text shown above the progress bar.
+			 */
+			[Bindable]
+			public var loadLabel:String;
+			
+			/**
+			 * The text shown above the progress bar when the actions are completed.
+			 */
+			[Bindable]
+			public var completedLabel:String;
+			
+			/**
+			 * The total number of actions, used to update the progress bar afterwards
+			 */
+			[Bindable]
+			public var totalActions:Number;
+			
+			/**
+			 * Estimated time upon completion.
+			 */
+			[Bindable]
+			private var _estimated:Number;
+			
+			private var _estimatedTimer:Timer;
+			
+			private function initComp():void
+			{
+				PopUpManager.centerPopUp(this);
+				showHide.play([this]);
+				progBar.invalidateSize();
+				
+			}
+			
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showHide.play([this],true);
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				this.removeEventListener(MouseEvent.MOUSE_OVER, removeBusyCursor);
+				this.removeEventListener(MouseEvent.MOUSE_OUT, setBusyCursor);
+				CursorManager.removeBusyCursor();
+				
+				PopUpManager.removePopUp(this);
+				dispatchEvent(new Event(Event.CLOSE));	
+			}
+
+			private function setBusyCursor():void
+			{
+				CursorManager.setBusyCursor();
+			}
+			
+			
+			private function removeBusyCursor():void
+			{
+				CursorManager.removeBusyCursor();
+			}
+			/**
+			 * Set the progress of the action. The value for the <code>totalActions</code> have to be set
+			 * when crating te component. 
+			 */
+			public function set progress(value:Number):void
+			{
+				if(value == totalActions) {
+					if(_estimatedTimer) _estimatedTimer.dispatchEvent(new TimerEvent(TimerEvent.TIMER_COMPLETE));
+					removeChild(progBar);
+					removeBusyCursor();
+					loadText.text = completedLabel;
+					closeBut.includeInLayout = true;
+					closeBut.visible = true;
+					
+				} else {
+					setBusyCursor();
+					progBar.setProgress(value,totalActions);
+					progBar.label= "Current Progress" + " " + Number((value*100)/totalActions).toFixed(1) + "%";	
+				}
+				
+			}
+			
+			/**
+			 * Set estimated time in seconds to complete the operation.
+			 */
+			public function set estimated(value:Number):void
+			{
+				if(value > 0) {
+					_estimated = value;
+					estimatedLabel.visible = true;
+					estimatedLabel.includeInLayout = true;
+					
+					_estimatedTimer = new Timer( 1000,  value);
+					_estimatedTimer.addEventListener(TimerEvent.TIMER, updateEstimatedTime);
+					_estimatedTimer.addEventListener(TimerEvent.TIMER_COMPLETE, timerComplete);
+					_estimatedTimer.start();
+				}
+			}
+			
+			private function timerComplete(event:TimerEvent):void
+			{
+				if(hasEventListener(TimerEvent.TIMER)) removeEventListener(TimerEvent.TIMER,updateEstimatedTime);
+				if(hasEventListener(TimerEvent.TIMER_COMPLETE)) removeEventListener(TimerEvent.TIMER_COMPLETE,timerComplete);
+				estimatedLabel.visible = false;
+				estimatedLabel.includeInLayout = false;
+			}
+			
+			private function updateEstimatedTime(event:TimerEvent):void
+			{
+				_estimated--;
+				estimatedLabel.text = "Estimated Time of Completion: "  + DateHelpers.secToTime(_estimated,'long');
+				
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Parallel id="showHide">
+		<mx:children>
+			<mx:Fade alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
+		</mx:children>
+	</mx:Parallel>
+	
+    <mx:Text id="loadText" text="{loadLabel}" styleName="genLabelBright" width="100%"/>
+    <mx:Label id="estimatedLabel" styleName="genLabelBright" visible="false" includeInLayout="false" width="100%"/>
+	<mx:ProgressBar id="progBar" styleName="dataLoaderPB" labelPlacement="bottom"
+		trackHeight="15" indeterminate="false" mode="manual"
+		minimum="0" maximum="100"
+		/>
+	<mx:Button id="closeBut" label="Close" 
+		styleName="headerButton" icon="@Embed('/assets/img/close.png')"
+		visible="false" includeInLayout="false" 
+		click="closeThis()" />
+</mx:VBox>

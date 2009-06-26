@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	styleName="dataLoader"	
+	horizontalAlign="left"
+	verticalAlign="middle"
+	verticalGap="10"
+	creationComplete="initComp()"
+	paddingTop="30"
+	paddingBottom="30"
+	paddingLeft="70"
+	paddingRight="70"
+	>
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.events.EffectEvent;
+			import mx.controls.LinkButton;
+			import mx.controls.Image;
+			import mx.states.AddChild;
+			import mx.managers.CursorManager;
+			import mx.controls.Spacer;
+			import mx.controls.Button;
+		
+			import classes.events.*;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			public var confirmLabel:String;
+			
+			/**
+			 * Dispatched when the action is confirmed by the user by clicking on the Yes button.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="confirmed", type="flash.events.Event")]
+			
+			
+			/**
+			 * Initiate component
+			 */
+			private function initComp():void
+			{
+				PopUpManager.centerPopUp(this);
+				showHide.play([this]);
+			}
+			
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showHide.play([this],true);
+				dispatchEvent(new Event(Event.CLOSE));
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				PopUpManager.removePopUp(this);	
+			}
+			
+			/**
+			 * Action confirmed
+			 */
+			private function confirm():void
+			{
+				dispatchEvent(new Event("confirmed"));
+				closeThis();
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:Parallel id="showHide">
+		<mx:children>
+			<mx:Fade alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
+		</mx:children>
+	</mx:Parallel>
+	
+	<mx:Text id="confirmText" text="{confirmLabel}" styleName="genLabelBright"/>
+	
+	<mx:HBox width="100%" horizontalGap="10" verticalAlign="middle">
+		<mx:Button label="Cancel" styleName="headerButton" click="closeThis()" icon="@Embed('/assets/img/close.png')"/>
+		<mx:Spacer width="100%" />
+		<mx:Button label="Yes" styleName="headerButton"  click="confirm()" icon="@Embed('/assets/img/ok.png')"/>		
+	</mx:HBox>		
+</mx:VBox>

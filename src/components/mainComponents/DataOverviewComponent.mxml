@@ -1,0 +1,238 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	xmlns:navigators="components.navigators.*"
+	xmlns:classComps ="classes.components.*"
+	bottom="0" top="0" left="0" right="0"
+	verticalGap="0"
+	paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5"
+	fontFamily="MyriadProBold"
+	creationComplete="initComp()" >
+	
+	<mx:Script>
+		<![CDATA[
+			import components.popUps.InfoPopUp;
+			import classes.rpc.GetItems;
+			import classes.datastructures.Item;
+			import mx.core.Application;
+			import mx.controls.HRule;
+			import classes.components.DataFilterBox;
+			import mx.containers.dividedBoxClasses.BoxDivider;
+			import mx.events.DividerEvent;
+			import mx.rpc.events.FaultEvent;
+			import mx.controls.Alert;
+			import mx.controls.Button;
+			import classes.components.Grid;
+			import mx.events.IndexChangedEvent;
+			import classes.events.*;
+			import classes.GlobalVars;
+			import mx.managers.PopUpManager;
+			import components.popUps.LoadPopUp;
+			import mx.utils.ObjectProxy;
+			import mx.events.ItemClickEvent;
+			import classes.rpc.GetData;
+	        import classes.helpers.XmlHelper;
+	        import mx.managers.PopUpManager;
+	        
+	        [Bindable]
+	        public var componentXML:XML;
+	        
+			private var _activeGrid:Grid;
+			private var loadViewActive:Boolean = false;
+			private var itemGridsXML:XMLList;
+			private var _currentItemInfo:Item;
+			private var loadWin:LoadPopUp = new LoadPopUp();
+			private var compsToBuild:int = 0;
+			private var Globals:GlobalVars;
+			
+			[Bindable]
+			private var _divider:BoxDivider;
+			
+            [Bindable]
+			[Embed(source="/assets/img/exclamation.png")]
+            private var alertIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+			  			
+			/* -----------------------------------------------------------------------------------------------
+			initialize component
+			----------------------------------------------------------------------------------------------- */
+			private function initComp():void
+			{
+				Globals = GlobalVars.getInstance();
+	
+				this.label = "Data Overview"; 			
+				this.addEventListener(LoadItemsEvent.LOAD_ITEMS, this.loadItems);
+				this.addEventListener("changeHeader",changeHeader);
+
+				// getting xml for the the grids           	
+            	itemGridsXML = XmlHelper.getItemsGrids();
+            	
+            	if(Globals.itemsData) {
+            		this.addEventListener("GridsNavigator", this.searchCompTabBuilt);
+					itemsComp.build(itemGridsXML);
+					itemsComp.attachSearchComps(Globals.itemsData);
+					
+				} else {
+					// Loading items data
+            		loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
+				}
+
+		
+				itemsComp.percentHeight = 100;
+				
+				if(componentXML && componentXML.hasOwnProperty('info')) {
+					showInfoBut.enabled = true;
+					showInfoBut.visible = true;
+				}
+				
+			}
+			/* -----------------------------------------------------------------------------------------------
+			CENTRAL EVENT HANDLING
+			----------------------------------------------------------------------------------------------- */
+			
+			/* -----------------------------------------------------------------------------------------------
+			Items comp event handling
+			----------------------------------------------------------------------------------------------- */
+			private function loadItems(event:LoadItemsEvent):void
+			{
+				
+				new GetItems();
+				
+				Globs.broker.addEventListener(EventsGlobals.ITEMS_LOAD_COMPLETE,buildItemsComp);
+				Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				loadView("loading data for overview");
+				
+				event.stopPropagation();
+				
+			}
+			
+			private function buildItemsComp(event:ObjectDataEvent):void
+			{
+				Globs.broker.removeEventListener(EventsGlobals.ITEMS_LOAD_COMPLETE,buildItemsComp);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				
+				var dbData:Array = event.values[0];
+				itemsComp.build(itemGridsXML);
+				itemsComp.attachSearchComps(dbData);
+			}
+			
+			
+			/**
+			 * Called, when something in the rpc went wrong
+			 */
+			private function showError(fault:ObjectDataEvent):void
+			{
+				compsToBuild = 0;
+				var faultData:FaultEvent = fault.values[0];
+				loadWin.closeThis();
+				loadViewActive = false;
+				this.removeEventListener("GridsNavigator", this.searchCompTabBuilt);
+				
+				Alert.show(faultData.fault.faultString + "\n Please choose other data parameters", faultData.fault.faultCode.toString(),4,null,null,alertIcon);
+				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+			}
+			 
+			/**
+			 * Set header to reflect selected tab
+			 * The <emp>changeHeader</emp> <code>event</code> is dispatched by a <code>searchGrid<code> or a <code>searchChart</code>
+			 * component.   
+			 */
+			private function changeHeader(event:ChangeHeaderEvent):void
+			{
+				_activeGrid = event.grid;
+                itemsComp.hasFocus = true; 
+				// set filter
+				dataFilterBox.activeComp = _activeGrid;
+				
+				event.stopPropagation();
+
+			}
+			
+			/* -----------------------------------------------------------------------------------------------
+			STATE HANDLING
+			----------------------------------------------------------------------------------------------- */
+			// initiate load view
+			// with the event we get the data needed to load the data
+			private function loadView(labelValue:String = null):void
+			{
+				if(loadViewActive) {
+					loadWin.loadLabel = labelValue;	
+				} else {
+					this.addEventListener("GridsNavigator", this.searchCompTabBuilt);
+					loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
+					loadWin.loadLabel = labelValue;
+					loadViewActive = true;
+				}
+			}
+			
+			
+			// called when the grids finished and attached to the gridsComp
+			private function searchCompTabBuilt(event:CompBuiltEvent):void
+			{
+				if(compsToBuild <= 1) {
+				 	
+					var selGridsComp:GridsNavigator = event.component as GridsNavigator;
+					selGridsComp.changeTabFocus();
+					
+					compsToBuild = 0;
+					
+					if(loadViewActive) {
+						loadWin.closeThis();
+						loadViewActive = false;
+					}
+					
+					this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, this.searchCompTabBuilt);
+					
+					
+							
+				} else {
+					compsToBuild--;
+				}
+				
+				event.stopPropagation();
+
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = componentXML.info;
+			}	
+		
+		]]>
+	</mx:Script>
+	
+	<mx:Fade id="fadeEff" alphaFrom="0" alphaTo="1" duration="3000"/>
+
+	<!-- layout -->
+	<mx:VBox id="contentBox" width="100%" height="100%" verticalGap="0" verticalAlign="middle" horizontalAlign="center">
+	
+		<mx:HBox id="headerCompsBox" width="100%" horizontalAlign="left">
+			<classComps:DataFilterBox id="dataFilterBox" comboBoxStyleName="searchCombo" textInputStyleName="clearTextInput"/>
+			<mx:Spacer width="100%" />
+	 		 <mx:Image source="{helpIcon}"
+	 		 	id="showInfoBut" toolTip="show info &amp; help for this component"
+	 		 	enabled="false"
+	 		 	visible="false"  
+	 		 	buttonMode="true" useHandCursor="true" mouseChildren="false" click="showInfo()"/>
+		</mx:HBox>	
+		<mx:HDividedBox id="gridsCompsBox" styleName="gridsComp"
+			width="100%" height="100%" verticalAlign="middle" 
+			horizontalAlign="center" verticalScrollPolicy="off" 
+			horizontalScrollPolicy="off">
+			
+			<navigators:GridsNavigator id="itemsComp" name="itemsnavigators" isDataComp="true" closable="false" enableGetData="false" 
+				verticalScrollPolicy="off" horizontalScrollPolicy="off"
+				addedToStage="{fadeEff.play([this.itemsComp])}" removedFromStage="{fadeEff.play([this.itemsComp],true)}"
+				left="0" right="0" top="0" bottom="0" />
+				
+		</mx:HDividedBox>
+		
+	</mx:VBox>
+</mx:VBox>

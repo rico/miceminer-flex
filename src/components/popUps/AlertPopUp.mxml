@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	 styleName="alertPopUp"
+	 verticalScrollPolicy="off"
+	 creationComplete="build()">
+	
+	<mx:Script>
+		<![CDATA[
+		
+			/**
+			 * A popup meant to display some kind of error message or warning
+			 */
+		
+			import mx.utils.StringUtil;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;			
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/exclamation.png")]
+            private var exclamationIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/close.png")]
+            private var closeIcon:Class;
+			
+			/**
+			 * The text which is displayed in the popup
+			 */
+			[Bindable]
+			public var alert_text:String;
+			
+		
+			private function build():void
+			{
+				PopUpManager.centerPopUp(this);
+				parentApplication.alpha = 0.66;
+				
+				StringUtil.trim(alert_text);
+				
+				var tabs:RegExp = /\t/g;  
+ 				alert_text.replace(tabs, "");
+			}
+					
+		]]>
+	</mx:Script>
+		
+	<mx:HBox width="100%" verticalAlign="top" horizontalGap="5">
+		<mx:Image source="{exclamationIcon}"/>
+		<mx:Label styleName="genLabelDark" text="Attention" />			
+	</mx:HBox>
+
+	<mx:HRule styleName="darkRule" width="100%"  />
+	
+	<mx:Text id="content" width="100%" height="100%" text="{alert_text}"/>	
+		
+	<mx:HBox width="100%">
+		<mx:Spacer width="100%"/>
+		<mx:Button styleName="normButtonDark" id="doneBut" icon="{closeIcon}" label="close" click="PopUpManager.removePopUp(this); parentApplication.alpha = 1" />
+	</mx:HBox>
+</mx:VBox>

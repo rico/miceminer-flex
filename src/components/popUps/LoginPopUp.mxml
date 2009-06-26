@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" xmlns:com="*"
+	styleName="dataLoader"	
+	horizontalAlign="left"
+	verticalAlign="middle"
+	verticalGap="10"
+	creationComplete="initComp()"
+	paddingTop="30"
+	paddingBottom="30"
+	paddingLeft="70"
+	paddingRight="70"
+	>
+	
+	<mx:Script>
+		<![CDATA[
+			import classes.GlobalVars;
+			import mx.events.FlexEvent;
+			import mx.events.EffectEvent;
+			import mx.controls.LinkButton;
+			import mx.controls.Image;
+			import mx.states.AddChild;
+			import mx.managers.CursorManager;
+			import mx.controls.Spacer;
+			import mx.controls.Button;
+		
+			import classes.events.*;
+			import mx.managers.PopUpManager;
+			
+			
+			
+
+			/**
+			 * Dispatched when the password is valid.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="valid", type="flash.events.Event")]
+			
+			
+			/**
+			 * Dispatched when the password is invalid.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="invalid", type="flash.events.Event")]
+			
+			
+			private var Globals:GlobalVars;
+			
+			
+			/**
+			 * Initiate component
+			 */
+			private function initComp():void
+			{
+				PopUpManager.centerPopUp(this);
+				zoomIn.play([this]);
+				addEventListener(KeyboardEvent.KEY_DOWN, keyPressed);
+				this.visible = true;
+				focusManager.setFocus(passwdInput);
+				Globals = GlobalVars.getInstance();
+			}
+
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				zoomIn.play([this],true);
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				PopUpManager.removePopUp(this);	
+			}
+			
+			/**
+			 * Validate the password
+			 */
+			private function validatePasswd():void
+			{
+				if(passwdInput.text == Globals.PASSWD) {
+					dispatchEvent(new Event("valid"));
+					closeThis();
+				} else {
+					feedbackLabel.includeInLayout = true;
+					feedbackLabel.visible = true;
+				}
+			}
+			
+			/**
+			 * Enter and Esc keyboard handler
+			 */
+			private function keyPressed(event:KeyboardEvent):void 
+			{
+				
+				 if (event.keyCode == Keyboard.ENTER) {
+    			 	validatePasswd();
+    			 } else if (event.keyCode == Keyboard.ESCAPE){
+    			 	closeThis();
+    			 }
+			}
+		
+		]]>
+	</mx:Script>
+	
+	<mx:Zoom id="zoomIn" 
+		zoomWidthFrom="0" zoomWidthTo="1" 
+		zoomHeightFrom="0"  zoomHeightTo="1"
+		duration="500" />
+	
+	<mx:HBox width="100%" horizontalGap="10" verticalAlign="middle">
+		<mx:Label id="passwdLabel" text="Password:" styleName="headerLabelBright" />
+		<mx:TextInput id="passwdInput" displayAsPassword="true" maxChars="20" width="200" styleName="hcinput"
+			show="{focusManager.setFocus(passwdInput)}"
+			click=" passwdInput.text = ''; feedbackLabel.includeInLayout = false; feedbackLabel.visible = false;"
+			focusIn="{feedbackLabel.includeInLayout = false; feedbackLabel.visible = false; passwdInput.text = ''; passwdInput.setSelection(0,0)}"/>
+			
+	</mx:HBox>
+	<mx:HBox width="100%" horizontalGap="10" verticalAlign="middle">
+		<mx:Spacer width="100%"/>
+		<mx:Label id="feedbackLabel" text="wrong password!" styleName="loginFalseLabel" visible="false" includeInLayout="false"/>
+	</mx:HBox>
+	
+	<mx:HBox width="100%" horizontalGap="10" verticalAlign="middle">
+		<mx:Spacer width="100%" />
+		<mx:Button label="Cancel" styleName="headerButton" click="closeThis()" icon="@Embed('/assets/img/close.png')"/>
+		<mx:Button label="Ok" styleName="headerButton"  click="validatePasswd()" icon="@Embed('/assets/img/ok.png')"/>		
+	</mx:HBox>		
+</mx:VBox>

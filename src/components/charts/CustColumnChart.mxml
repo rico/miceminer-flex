@@ -1,0 +1,509 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	width="100%" height="100%" horizontalAlign="center" verticalAlign="middle"
+	creationComplete="initComp()">
+	<mx:Script>
+		<![CDATA[
+			import mx.charts.chartClasses.IChartElement;
+			import mx.collections.SortField;
+			import mx.collections.ArrayCollection;
+			import mx.events.CollectionEvent;
+			import mx.events.ListEvent;
+			import mx.events.FlexEvent;
+			import mx.controls.DataGrid;
+			import mx.charts.ChartItem;
+			import mx.charts.chartClasses.Series;
+			import classes.datastructures.Item;
+			import mx.charts.LinearAxis;
+			import classes.helpers.XmlHelper;
+			import mx.charts.Legend;
+			import mx.charts.ColumnChart;
+			import classes.components.Grid;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.charts.events.ChartItemEvent;
+			import mx.charts.events.LegendMouseEvent;
+			import mx.charts.CategoryAxis;
+			import mx.charts.HitData;
+			import mx.charts.series.ColumnSeries;
+			import mx.charts.series.items.ColumnSeriesItem;
+			import mx.controls.Label;
+			import mx.controls.VRule;
+			import mx.utils.ObjectProxy;
+			import classes.skins.CustLegendItemInteractive;
+			import classes.events.*;
+			import mx.graphics.SolidColor;
+			import mx.events.DataGridEvent;
+					
+			//private var _legendItems:Array;
+			private var _selSortItem:CustLegendItemInteractive;
+			private var _xAxisLabel:String;
+			private var _xAxis:CategoryAxis;
+			private var _yAxis:LinearAxis;
+			private var _chartXML:XML;
+			private var _prevSelectedItemIndex:int;
+			private var _grid:Grid;
+			private var _colChart:ColumnChart;
+			private var _colChartLegend:Legend;
+			
+			private function initComp():void {
+				
+				// Configure event listener to avoid Bug FLEXDMV-1695
+				addEventListener(Event.ADDED_TO_STAGE, axisTitle);
+				//_grid.dbData.addEventListener(CollectionEvent.COLLECTION_CHANGE,highlightItem);
+				_grid.dbData.addEventListener(CollectionEvent.COLLECTION_CHANGE,updateSort);
+				_grid.searchGrid.addEventListener(ListEvent.ITEM_CLICK, highlightItem);
+				
+				// let the parent component know that this chart is ready
+			 	dispatchEvent(new CompBuiltEvent(CompBuiltEvent.SEARCH_CHART_ELEMENT, this));
+			}
+		
+			/**
+			 * Create a column chart representation for the data in a <code>Grid</code> component.
+			 * 
+			 * <p>Some <code>&lt;grid&gt;</code> nodes in the xml cofiguration file have a <code>&lt;chart&gt;</code> child node, 
+			 * linking to a <code>&lt;chart&gt;</code> node which is a child node of the <code>&lt;charts&gt;</code> node.</p>
+			 * 
+			 * @example Chart configuration for a <code>grid</code> with id <code>exampleGrid</code>.
+			 * 
+			 * <p>The <code>grid</code> configuration.</p>
+			 * <listing version="3.0">
+			 * &lt;grid id="miceItem" label="mice" method="getMice" filename="mice_list" header="mouse"
+			 *		initsort="data_count"&gt;
+			 *		 
+			 *		 
+			 *		&lt;!--	columns (col) for the grid
+			 *	
+			 *				field: the field in the data provider or database 
+			 *				label: column label
+			 *				width: column width in pixel
+			 *				sort: what kind of sort to offer for this column (shown in the header when choosed to filter this column) -
+			 *						alphanum -&gt; textfield
+			 *						numeric -&gt;	slider numeric
+			 *						date -&gt; slider date 
+			 *		--&gt;
+			 *				
+			 * 		&lt;col field="id" label="rfid" width="80" sort="alphanum"/&gt;
+			 * 		&lt;col field="last" label="last dataset" width="100" sort="date"/&gt;
+			 * 		&lt;col field="implant_date" label="implant date" width="60" sort="date"/&gt;
+			 * 		&lt;col field="sex" label="sex" width="40" sort="alphanum" /&gt;
+			 * 		&lt;col field="data_count" label="dataset count" width="100" sort="numeric" /&gt;
+			 * 		&lt;col field="dir_count" label="in/out count" width="70" sort="numeric" /&gt;
+			 * 		&lt;col field="res_count" label="stay count" width="70" sort="numeric" /&gt;					
+			 *		
+			 *		&lt;toolTip&gt;Double click to get data for the rfid&lt;/toolTip&gt;
+			 *		
+			 *		<b>&lt;!--	chart
+			 *		
+			 *				the chart to show for this grid 
+			 *		--&gt;
+			 *		
+			 *		&lt;chart type="colChart" id="exampleChart" /&gt;</b>
+			 *		
+			 *		&lt;!--	dataGrids
+			 *				
+			 *				the data grids which show the data for this item grid.
+			 *				Each id must point to an existing grid with this id which is a child of grids.dataGrids		
+			 *		--&gt;
+			 *				
+			 *		&lt;dataGrids&gt;
+			 *			&lt;id&gt;miceData&lt;/id&gt;
+			 *			&lt;id&gt;dirResMice&lt;/id&gt;
+			 *			&lt;id&gt;resMice&lt;/id&gt;						
+			 *		&lt;/dataGrids&gt;
+			 * &lt;/grid&gt; 	 
+			 * </listing>
+			 * 
+			 * <p>The <code>chart</code> configuration for the grid.</p>
+			 * <listing version="3.0">
+			 * &lt;charts&gt;
+		     *		&lt;!-- column charts --&gt;
+			 *		&lt;!-- column (bar) chart --&gt;
+			 *		<b>&lt;chart type="colChart" id="exampleChart"&gt;</b>
+			 *			
+			 *			&lt;!--	
+			 *					the field in the data provider we use as the x-axis 
+			 *					This field must correspond to a column (col) field attribute in the 
+			 *					grid which this chart is set als chart
+			 *						
+			 *			--&gt;
+			 *			&lt;xAxis&gt;
+			 *				&lt;field&gt;id&lt;/field&gt;
+			 *			&lt;/xAxis&gt;
+			 *			
+			 *			&lt;!--	
+			 *					the fields in the data provider we use as values in the y-axis 
+			 *					Each of these fields must correspond to a column (col) field attribute in the 
+			 *					grid which this chart is set als chart --&gt;
+			 *						
+			 *			--&gt;
+			 *			&lt;yAxis&gt;
+			 *				&lt;field&gt;data_count&lt;/field&gt;
+			 *				&lt;field&gt;dir_count&lt;/field&gt;
+			 *				&lt;field&gt;res_count&lt;/field&gt;					
+			 *				&lt;label&gt;count&lt;/label&gt;
+			 *			&lt;/yAxis&gt;
+			 *			
+			 *			&lt;!-- 
+			 *					Additional information to show in the data tip of the chart (shown when mousing over).
+			 *					field must correspond to a column (col) field attribute in the 
+			 *					grid which this chart is set als chart
+			 *			--&gt;
+			 *			
+			 * 			&lt;dataTip&gt;
+			 *				&lt;field&gt;last&lt;/field&gt;
+			 *			&lt;/dataTip&gt;
+			 *			
+			 *			&lt;!--
+			 *					The description for the chart (will be shown below the chart)
+			 *			--&gt;
+			 * 			&lt;desc&gt;Grouped count chart for&lt;/desc&gt;
+			 *		&lt;/chart&gt;
+			 * [...]
+			 * &lt;/charts&gt;
+			 * </listing>
+			 * 
+			 * @param chartXML Xml configuration for the chart.
+			 * @param grid The <code>Grid</code> instance to visualize the data for.
+			 * 
+			 * @see components.grid.Grid
+			 * 
+			 */
+			public function build(chartXML:XML, grid:Grid):void
+			{
+				this._chartXML = chartXML;
+				this._grid = grid;
+				
+				// Label, description for the chart
+				_xAxisLabel = XmlHelper.getLabel(_chartXML..xAxis.field, _grid.columnsXML);
+				this.label = XmlHelper.getChartDesc(_chartXML, _xAxisLabel);
+				
+				////////////////////
+				// GET INFOS 
+				////////////////////
+				var actSortLabel:String = _grid.activeSortGridColumn.headerText; // get header text of actual Sort
+				this._selSortItem = new CustLegendItemInteractive("");
+				this.addEventListener("chartItemClicked", showData);
+
+				////////////////////
+				// CONF CHART 
+				////////////////////
+				_colChart = new ColumnChart();
+				_colChart.dataProvider = _grid.dbData;
+				_colChart.styleName = "custChart";
+				_colChart.showDataTips = true;
+				//_colChart.dataTipMode = "multiple";
+				_colChart.percentWidth = 100;
+				_colChart.percentHeight = 100;
+				_colChart.dataTipFunction = custDataTipFunc;
+				_colChart.doubleClickEnabled = true;
+				_colChart.addEventListener(ChartItemEvent.ITEM_DOUBLE_CLICK, showData);
+				_colChart.addEventListener(ChartItemEvent.ITEM_CLICK, highlightChartItem);
+				
+				if(_grid.enableGetData) {
+					_colChart.toolTip = "Double-click bar to get the data";
+				}
+				
+				///////////////////
+				// CHART LEGEND
+				///////////////////
+				_colChartLegend = new Legend();
+				//_colChartLegend.dataProvider = _colChart
+				_colChartLegend.direction = "horizontal";
+				_colChartLegend.percentWidth = 100;
+				//_colChartLegend.height = 30;
+				_colChartLegend.styleName = "searchChartLegendH";
+				_colChartLegend.legendItemClass = CustLegendItemInteractive;
+				
+				//_colChartLegend.legendItemClass = CustLegendItem;
+				
+			
+				/////////////
+				// x-axis
+				/////////////
+				_xAxis = new CategoryAxis();
+				_xAxis.dataProvider = _grid.dbData;
+				_xAxis.categoryField = _chartXML..xAxis.field;
+				
+				//xAxis.title = _xAxisLabel;
+				
+				_colChart.horizontalAxis = _xAxis;
+				
+				// add x-axis Label to the legend
+				var xAxisLegendLabel:Label = new Label();
+				xAxisLegendLabel.text = "x-Axis:";
+				xAxisLegendLabel.styleName = "genLabel";
+				_colChartLegend.addChild(xAxisLegendLabel);
+				
+				// Add legend item for the x-axis
+				var xLegendItem:CustLegendItemInteractive = new CustLegendItemInteractive(_chartXML..xAxis.field);
+
+				xLegendItem.label = XmlHelper.getLabel(_xAxis.categoryField, _grid.columnsXML);
+				
+				// transparent Marker for the x-axis legend item
+				xLegendItem.setStyle("fill", new SolidColor(0,0));
+				
+				if(xLegendItem.label == actSortLabel){updateLegend(xLegendItem)}; // set as sort if needed
+				_colChartLegend.addChild(xLegendItem);
+				
+				// add Seperator ////////////////////////
+				var axisLabelSep:VRule = new VRule();
+				axisLabelSep.styleName = "legendSeparator";
+				axisLabelSep.height = 15;
+				_colChartLegend.addChild(axisLabelSep);
+				////////////////////////////////////////
+			
+				/////////////////
+				// y-Axis
+				/////////////////
+				
+				_yAxis = new LinearAxis();
+				// Bug resolve
+				//yAxis.title = _chartXML..yAxis.label;
+				_colChart.verticalAxis = _yAxis;
+				
+				
+				var yAxisLegendLabel:Label = new Label();
+				yAxisLegendLabel.text = "y-Axis:";
+				yAxisLegendLabel.styleName = "genLabel";
+				_colChartLegend.addChild(yAxisLegendLabel);
+				
+				
+				var yColsSeries:Array = new Array();
+				//_legendItems = new Array();
+				
+				var yFields:XMLList = chartXML..yAxis.field;
+				
+				for each (var yField:XML in yFields)
+				{
+					var yCol:ColumnSeries = new ColumnSeries();
+					var yLegendItem:CustLegendItemInteractive = new CustLegendItemInteractive( yField.toString() );
+					
+					yCol.setStyle('showDataEffect', interpolEff);
+					yCol.xField = chartXML..xAxis.field;
+					yCol.yField = yField.toString();
+					yCol.displayName = XmlHelper.getLabel(yField.toString(), _grid.columnsXML);
+					
+					// legend item
+					yLegendItem.label = yCol.displayName;
+					yLegendItem.element = yCol;
+					if(yLegendItem.label == actSortLabel){updateLegend(yLegendItem)}; // set as sort if needed 
+					_colChartLegend.addChild(yLegendItem);
+					
+					//_legendItems.push({label: yCol.displayName , field:yField.toString()});
+					yColsSeries.push(yCol);	
+				}
+				
+				// set data series
+				_colChart.series = yColsSeries;
+				_colChartLegend.addEventListener(LegendMouseEvent.ITEM_CLICK, selSort);
+			
+				// add childs	
+				this.addChild(_colChartLegend);
+				this.addChild(_colChart);
+				
+				// highlight selected item
+	
+			}
+			
+			/**
+			 * Special function to avoid bug <a href="http://bugs.adobe.com/jira/browse/FLEXDMV-1695">FLEXDMV-1695</a>.
+			 * 
+			 * <p>Sets axis titles for column charts.</p>
+			 */ 
+			private function axisTitle(event:Event):void
+			{
+					if(event.type == "addedToStage") {
+						_xAxis.title = _xAxisLabel;
+						_yAxis.title = _chartXML..yAxis.label;
+					} else {
+						_xAxis.title = null;
+						_yAxis.title = null;
+					}
+					
+			}
+
+			/**
+			 * Handle sorts for the chart through <code>click</code> on the <code>LegendItem</code>
+			 */ 
+			private function selSort(event:LegendMouseEvent):void
+			{
+				var selLegItem:CustLegendItemInteractive = event.item as CustLegendItemInteractive;
+				
+				// get clicked column and column index (somehow abstract)
+				var colIndex:int = 0;
+				for each (var gridCol:DataGridColumn in _grid.searchGrid.columns) {
+					
+					if(gridCol.headerText == selLegItem.label) {
+
+						// call search_grid sort function
+						_grid.searchGrid.dispatchEvent( new DataGridEvent(DataGridEvent.HEADER_RELEASE,false,true,
+							colIndex,gridCol.dataField,0,null,null,0));
+						
+						// update the legend
+						updateLegend(selLegItem);
+					}
+					
+					colIndex += 1; 
+				}
+				
+				//highlightChartItem();
+				
+			}
+			
+			/**
+			 * Update the <code>CustLegendItem</code>'s elements of the <code>Legend</code> to reflect the actual sort.
+			 */ 
+			private function updateLegend(selLegItem:CustLegendItemInteractive):void
+			{
+				
+				if(selLegItem.dataField != _selSortItem.dataField ) {
+					selLegItem.selected = true;
+					_selSortItem.selected = false;
+					
+					_selSortItem = selLegItem;
+				} 
+				
+				_selSortItem.desc = _grid.dbData.sort.fields[0].descending;
+
+				//_selSortItem.desc = _grid.dbData.sort.fields[0].descending;
+					
+			}
+			
+			/**
+        	 * Highlights the selected item in the column chart.
+        	 * 
+        	 * 
+        	 * @param barName	The name/id of the bar/column chart
+        	 * @param barIndex	The position of the column you want to highlight
+        	 * 
+        	 */
+        	private function highlightChartItem(event:ChartItemEvent = null):void
+        	{
+        	
+        		var newSelectedItemIndex:int;
+        		
+        		if(event) {	
+        			newSelectedItemIndex = event.hitData.chartItem.index + 1;
+        			_grid.selectedItem = new Item(_grid.dbData.getItemAt(newSelectedItemIndex -1), _grid.id);
+        		} else {
+        			newSelectedItemIndex = _grid.searchGrid.selectedIndex +1;
+        		}
+        		
+    			for each( var series:ColumnSeries in _colChart.series) {
+    				
+    				if (_prevSelectedItemIndex) {
+    					series.getChildAt( _prevSelectedItemIndex ).filters = [];
+    				}
+    				var data:Object = series.getChildAt(newSelectedItemIndex); 
+    				data.filters = [new GlowFilter(0xFA6706,0.8,4,4), new DropShadowFilter(4,45,0x4E4E4E,0.75,4,4)];
+    			}
+    			
+    			_prevSelectedItemIndex = newSelectedItemIndex;
+
+        	}
+        				
+			/**
+			 * Custom <code>ColumnChart</code> data tip 
+			 */
+			private function custDataTipFunc(hd:HitData):String {
+
+				var dataTipString:String;
+				
+				var currElement:ColumnSeries = hd.element as ColumnSeries;
+				
+				var currXField:String = currElement.xField;
+				var currYField:String = currElement.yField;
+				
+				var currSeries:ColumnSeriesItem = hd.chartItem as ColumnSeriesItem;
+				
+				var currXVal:String = currSeries.xValue as String;
+				var currYVal:String = currSeries.yValue as String;
+				
+				dataTipString = "<u><b>" + XmlHelper.getLabel(currYField, _grid.columnsXML) + ": " + currYVal + "</b></u><br/>" + 
+					"<b>" + XmlHelper.getLabel(currXField, _grid.columnsXML) + "</b>: " + currXVal + "<br/>";
+					
+				for each (var dataTipXML:XML in _chartXML.dataTip.field){
+					
+					//trace(dataTipXML.toString());
+					var field:String = dataTipXML.toString();
+					
+					dataTipString += "<b>" + XmlHelper.getLabel(field, _grid.columnsXML) + "</b>: " + hd.item[dataTipXML.toString()] + "<br>";
+				}
+				
+				return dataTipString;  
+   	  
+			}
+			
+			/**
+			 * Show data on double click
+			 */
+			private function showData(event:ChartItemEvent) :void
+			{
+				highlightChartItem(event);
+				
+				var currSeries:ColumnSeriesItem = event.hitData.chartItem as ColumnSeriesItem;
+				
+				//var dataInfo:Item = new Item(currSeries.xValue as String,_grid.id);
+				var dataInfo:Item = new Item(event.hitData.item, _grid.id);
+				
+				
+				/* dataInfo.id = currSeries.xValue as String;
+				dataInfo.gridId = _grid.id;
+				dataInfo.gridName = _grid.name; */
+				
+				dispatchEvent(new LoadDataEvent("loadData",dataInfo));				
+
+			}
+			
+			 
+			/**
+			 * @private
+			 */ 
+			private function highlightItem(event:ListEvent):void
+			{
+				highlightChartItem();
+			}
+			
+			/**
+			 * @private
+			 */ 
+			private function updateSort(event:CollectionEvent):void
+			{
+				var currentSortField:SortField = ArrayCollection(event.currentTarget).sort.fields[0];
+				
+				for each ( var legendItem:Object in _colChartLegend.getChildren() ) {
+					
+					if( legendItem is CustLegendItemInteractive && 
+						currentSortField.name == CustLegendItemInteractive(legendItem).dataField ) {
+							// legend item to update found		
+							updateLegend( CustLegendItemInteractive(legendItem) );
+							return;
+							
+					}
+				}
+				
+				updateLegend( new CustLegendItemInteractive("") )
+					
+			}
+			
+			/**
+            * The xml-configuration for this chart
+            */ 
+			public function get chartXML():XML
+			{
+				return _chartXML;
+			}
+			
+			/**
+            * The data for this chart.
+            */ 
+			public function get chartData():ArrayCollection
+			{
+				return _grid.dbData;
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<mx:SeriesInterpolate id="interpolEff" duration="1500" elementOffset="0" minimumElementDuration="20" />
+</mx:VBox>

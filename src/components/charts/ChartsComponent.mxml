@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Canvas xmlns:mx="http://www.adobe.com/2006/mxml"
+	styleName="searchChart"
+	creationComplete="initComp()">
+
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.HRule;
+			import mx.core.UIComponent;
+			import classes.events.*;
+			import mx.binding.utils.*;
+			import mx.containers.VBox;
+			import mx.controls.ProgressBar;
+			import components.popUps.LoadPopUp;
+			import mx.managers.PopUpManager;
+			import mx.containers.Accordion;
+			import classes.components.Grid;
+			import mx.charts.ColumnChart;
+			import mx.charts.Legend;
+			import mx.charts.PieChart;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.XmlHelper;			
+			import mx.events.DataGridEvent;
+			import mx.utils.ObjectProxy;
+			import mx.controls.Alert;
+			import components.charts.*;
+						
+			/**
+			 * The <code>Grid.searchGrid</code> we want to show as chart.
+			 * 
+			 * @see components.Grid
+			 */
+			public var grid:Grid;
+			
+			[Bindable]
+			public var hasCharts:Boolean;
+		
+			private var _currColChart:ColumnChart;
+			private var _currColChartLegend:Legend;
+			
+			[Bindable]
+			private var _chartBox:Accordion;
+			//private var _loadWin:loadPopUp;
+			private var _currGroupedPieChart:PieChart;
+			private var _currPieChartLegend:Legend;
+			private var _charts:Array;
+			private var _chartsAdded:int;
+			private var _chartsXML:XMLList;
+			private var bindSetter:ChangeWatcher;
+
+			private function initComp():void
+			{
+
+				_chartsXML = XmlHelper.getChartsXML(grid.id);
+				
+				
+				// init objects
+				_chartBox = new Accordion();
+				_chartBox.percentHeight = 100;
+				_chartBox.percentWidth = 100;
+				_chartBox.horizontalScrollPolicy = "off";
+				_chartBox.verticalScrollPolicy = "off";
+				_chartBox.styleName = "searchChartAcc";
+				
+				_chartsAdded = 0;
+				_charts = new Array();
+				
+				/*<mx:Accordion width="100%" height="100%" id="chartBox" 
+					horizontalScrollPolicy="off" verticalScrollPolicy="off"
+					styleName="searchChart"
+				/>*/
+				
+				// just an indicator if we have charts or not
+				_chartsXML.length() > 0 ? hasCharts = true : hasCharts = false;
+				
+				for each (var chartXML:XML in _chartsXML) {
+					
+					var chartType:String = chartXML.@type;
+					
+					// based on the chart type provided in the xml we build the 
+					// appropriate chart
+					switch(chartType) {
+						case("colChart"):
+							var custColChart:CustColumnChart = new CustColumnChart();
+							custColChart.styleName = "searchChartChild";
+							custColChart.build(chartXML, grid);
+							_charts.push(custColChart);
+						break;
+						case("pieChart"):
+							var custPieChart:CustPieChart = new CustPieChart();
+							custPieChart.build(chartXML,grid.dbData, grid.item);
+							custPieChart.styleName = "searchChartChild";
+							_charts.push(custPieChart);
+						break;
+						default:
+							//_loadWin.closeThis();
+							//this.removeChild(_loadWin);
+							this.removeEventListener("chartReady",chartReady);
+						break;
+					}
+					
+				}
+
+				addCharts();
+			}
+			
+			/**
+			 * Listener function to determine when all charts are ready. If this is the case, switch to the 
+			 * <code>chartState</code>
+			 */
+	        private function chartReady(event:CompBuiltEvent):void
+	        {
+	        	_chartsAdded += 1;
+	        	
+	        	//trace(_chartsAdded.toString() + " charts added of " + _charts.length.toString());
+	        	if(_chartsAdded == _charts.length){
+		        	removeEventListener("searchChartElement", chartReady);
+		        	//_loadWin.closeThis();
+		        	//this.removeChild(_loadWin);
+		        	dispatchEvent(new CompBuiltEvent(CompBuiltEvent.CHARTS_COMPONENT, this));
+	        	}
+	        	
+	        	event.stopImmediatePropagation();
+
+	        }
+	        
+	        /**
+	        * Add the charts to the display list.
+	        */
+	        private function addCharts():void
+	        {
+	        	addEventListener(CompBuiltEvent.SEARCH_CHART_ELEMENT,chartReady);
+	        	
+	        	if( _charts.length > 1) {
+	        		this.addChildAt(_chartBox,0);
+	        		for (var i:int = 0; i < _charts.length; i++) {
+ 						_chartBox.addChild(_charts[i]);
+					}
+	        	} else {
+					this.addChild(_charts[0]);	        	
+	        	}
+	        }
+	        
+	        /**
+	        * XML- configuration for the charts shown by this component.
+	        */
+	        public function get chartsXML():XMLList
+	        {
+	        	return _chartsXML;
+	        }
+	        
+	        /**
+	        * The active chart in the charts accordion.
+	        * 
+	        * @return Either a component of the class <code>CustPieChart</code> or <code>CustColumnChart</code>.
+	        * 
+	        * @see components.charts.CustPieChart
+	        * @see components.charts.CustColumnChart
+	        */
+	        public function get activeChart():UIComponent
+	        {
+	        	return _chartBox.selectedChild;
+	        }
+	        
+	        /**
+	        * XML-configuration of the active chart in the charts accordion.
+	        * 
+	        * @return The config xml or an empty <code>XML</code> if the configuration is not set.
+	        */
+	        public function get activeChartXML():XML
+	        {
+	        	if(_chartBox.selectedChild.hasOwnProperty('chartXML')) {
+	        		return XML(_chartBox.selectedChild['chartXML']);	
+	        	} else {
+	        		return new XML();
+	        	}
+	        	
+	        }
+	        
+	        /**
+	        * Data of the active chart in the charts accordion.
+	        * 
+	        * @return The chart data or an empty <code>ArrayCollection</code> if the data is not set.
+	        */
+	        public function get activeChartData():ArrayCollection
+	        {
+	        	if(_chartBox.selectedChild.hasOwnProperty('chartData')) {
+	        		return ArrayCollection(_chartBox.selectedChild['chartData']);	
+	        	} else {
+	        		return new ArrayCollection();
+	        	}
+	        	
+	        }
+			
+		]]>
+	</mx:Script>
+	
+</mx:Canvas>

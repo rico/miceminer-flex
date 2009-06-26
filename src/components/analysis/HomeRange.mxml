@@ -1,0 +1,472 @@
+
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:classes="classes.components.*"  
+	xmlns:grid="components.mainComponents.*"
+	xmlns:gridCtrl="components.grids.gridControls.*"
+	width="100%" height="100%" creationComplete="build()" 
+	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
+	backgroundAlpha="0.0"
+	verticalGap="0">
+	<mx:Script>
+		<![CDATA[
+			import classes.helpers.DbaseExport;
+			import classes.events.LoadDataEvent;
+			import classes.rpc.GetDataByMethod;
+			import mx.events.ListEvent;
+			import mx.utils.ArrayUtil;
+			import mx.containers.Panel;
+			import classes.helpers.Polygon;
+			import mx.utils.ObjectUtil;
+			import classes.components.Grid;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.XmlHelper;
+			import classes.helpers.DateHelpers;
+			import classes.components.DataFilterBox;
+			import mx.collections.ArrayCollection;
+			import classes.events.ObjectDataEvent;
+			import classes.events.Globs;
+			import classes.events.EventsGlobals;
+			import classes.GlobalVars;
+			import classes.rpc.GenericDataGetter;
+			import components.popUps.*;
+			import classes.helpers.ExcelExport;
+			import mx.managers.PopUpManager;
+			import mx.controls.DataGrid;
+			
+			[Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/export_dbf.png")]
+            private var exportDbfIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/clear.png")]
+            private var clearIcon:Class;
+            
+            /**
+            * The xml configuration for this component must be in a node <code>&lt;analysis&gt;</code> with the id <code>ANALYSIS_ID</code>  
+            * which is a child node of the <code>&lt;analysises&gt;</code> node.
+            */
+            public const ANALYSIS_ID:String = 'home_range';
+			
+			[Bindable]
+			private var _resultGrid:Grid;
+			[Bindable]
+			private var _detailGrid:DataGrid;
+			[Bindable]
+            private var _dbData:ArrayCollection;
+            [Bindable]
+            private var _detailData:ArrayCollection;
+            [Bindable]
+            private var _percentLimit:Array;
+            [Bindable]
+            private var _rfidsData:ArrayCollection;
+            private var _confXML:XML;
+            private var _loadWin:LoadPopUp;
+            private var _exportWin:ExportPopUp;
+            private var _dbDateRange:Array;
+            private var _dateRange:Array;
+            private var _boxesData:Array;
+            private var _detailBox:Panel;
+            private var _detailItem:Object;
+            private var _exportToDbaseMethod:String;
+            
+            /* -----------------------------------------------------------------------------------------------
+			BUILD
+			----------------------------------------------------------------------------------------------- */
+			
+			private function build():void
+			{
+				
+				// initiating objects
+				_detailBox = new Panel();
+				_detailBox.percentWidth = 100;
+				_detailBox.height = 200;
+				_detailBox.styleName = "detailPanel";
+				 
+				_detailGrid = new DataGrid();
+				_detailGrid.percentWidth = 100;
+				_detailGrid.percentHeight = 100;
+				
+				_detailGrid.styleName = "searchGrid";
+				_detailGrid.setStyle("drop-shadow-enabled", false);
+				_detailData = new ArrayCollection();
+				//_detailGrid.dataProvider = _detailData;
+				
+				_detailBox.addChild(_detailGrid);
+				
+				_loadWin = new LoadPopUp();
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Preparing component";
+				
+				_dbData = new ArrayCollection();
+				_dateRange = DateHelpers.getDbRange();
+				dateSetter.dbDateRange = _dateRange;
+				
+				// configuration xml for this
+				_confXML = XmlHelper.getAnalysisXML(ANALYSIS_ID);
+				
+				// configure grid
+				_resultGrid = new Grid(_confXML.grid[0]);
+				_resultGrid.dbData = _dbData;
+				
+				_resultGrid.percentWidth = 100;
+				_resultGrid.percentHeight = 100;
+				_resultGrid.filterLabel = "filter by column";
+				_resultGrid.setStyle("drop-shadow-enabled", false);
+				
+				// add handlers
+				_resultGrid.searchGrid.addEventListener(ListEvent.ITEM_CLICK,showDetails);
+				_resultGrid.gridToolTip = "Click to show details for this data. Click again to hide details";				
+				
+				// add grid
+				content_box.addChild(_resultGrid);
+				
+				
+				// get rfid data
+				getRfids();
+				
+				// limit values
+				_percentLimit = new Array();
+				var limit:int = 0;
+				while (limit <= 30) {
+					_percentLimit.push({label: (100 - limit).toString() + ' %', limit: limit });
+					limit += 2;
+				}
+				
+				limit_combo.selectedIndex = 0;
+				
+				_exportToDbaseMethod = GlobalVars.getInstance().ConfigXML.flex.helpers.exportToDbase.@method;
+			}
+			            
+			/* -----------------------------------------------------------------------------------------------
+			DATA LOAD STUFF
+			----------------------------------------------------------------------------------------------- */
+			/**
+			 *  Called when the loadDataBut Button is clicked.
+			 */ 
+			private function loadData(event:MouseEvent):void
+			{
+				
+				
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Loading data for rfid " + rfid_combo.selectedLabel + " ...";
+										
+				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+				
+				// The parameters for the service
+				var parameters:Array = collectParams();
+				
+				var getDataData:GetDataByMethod = new GetDataByMethod(_confXML.@method, parameters);
+				event.stopImmediatePropagation();
+							
+			}
+			
+			/**
+			 * @private
+			 * get rfids 
+			 */
+			 private function getRfids():void
+			 {
+			 	
+				var getRfidsSQL:String = "SELECT id,sex FROM " + XmlHelper.getDbTableName('rfids') + " ORDER BY id asc";
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setRfidsData);
+				
+				var getRfidsData:GenericDataGetter = new GenericDataGetter(getRfidsSQL);
+					
+			 }
+			 
+			 	
+			/**
+			 * Export data for the selected mouse within the selected date range to a dbase file (.dbf)
+			 */  
+			private function exportToDbf(event:MouseEvent):void
+			{
+				
+				var parameters:Array = collectParams();
+				var dbaseExport:DbaseExport = new DbaseExport(parameters["rfid"], parameters["from"], parameters["to"]);
+				event.stopImmediatePropagation();			  
+			}
+
+			 /* -----------------------------------------------------------------------------------------------
+			EVENT HANDLING (Data loaded events)
+			----------------------------------------------------------------------------------------------- */
+			
+			
+			/**
+			 * @private 
+			 * 
+			 * Set rfids data 
+			 */
+			private function setRfidsData(event:ObjectDataEvent):void
+			{
+				_rfidsData = event.values[0];
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setRfidsData);
+				event.stopImmediatePropagation();
+				
+				rfid_combo.dataProvider = _rfidsData;
+				
+				if(enabled && _loadWin != null) {
+            		_loadWin.closeThis();
+            			
+            	}
+				
+			} 
+			
+			/**
+			 * Add the loaded data to the grid and make the needed calculation 
+			 */
+			private function setData(event:ObjectDataEvent):void
+			{
+				
+				var dataObj:Object = event.values[0][0];
+				
+				var counter:Number = 1;
+				if( Number(dataObj.data_count) >  0) {
+					dataObj.rfid = rfid_combo.selectedLabel; 
+					dataObj.sex = rfid_combo.selectedItem.sex;
+					dataObj.boxes_count = 0; // the number of different boxes
+					dataObj.boxes_string = ""; // the string listing all the boxes								
+					
+					
+					var dataLimitAbs:Number = (limit_combo.selectedItem.limit * Number(dataObj.data_count)) / 100;
+					trace("Limit: " + dataLimitAbs.toString() );
+					dataObj.limit = limit_combo.selectedLabel + " (" + dataLimitAbs.toString() + ")";
+					
+					var boxes:Array = new Array(); // the array containing the information for the boxes
+					var coords:Array = new Array(); // the array containing the coordinates to calculate the MCP
+					var boxesString:String = ""; // the concatenated string of all boxes
+					var boxes_filtered:Array = []; // the array with the boxes meeting the limit criteria 
+					
+					// The remote service returns an array with all indices for the boxes.
+					// So we need to get out the ones containing values. 
+					for (var box:String in dataObj.boxes) {
+						if(dataObj.boxes[box] != null && dataObj.boxes[box].count as Number >= dataLimitAbs) {
+							trace("above limit: " + box + " => " + dataObj.boxes[box].count);
+					    	coords.push( new Point( dataObj.boxes[box].x, dataObj.boxes[box].y) );
+					    	boxes_filtered[box] = dataObj.boxes[box];
+					    	dataObj.boxes_string += box + ", ";
+					    	dataObj.boxes_count++;
+					 	}
+					}
+					
+					// Reassign the boxes.
+					dataObj.boxes = boxes_filtered;
+					
+					// format the boxes string.
+					dataObj.boxes_string = String(dataObj.boxes_string).substring(0, (String(dataObj.boxes_string).length -2) );
+			
+					// calculate the area (MCP).
+					var poly:Polygon = new Polygon(coords);
+					var area:Number = poly.area();
+					dataObj.area = area.toFixed(1);
+										
+					_dbData.addItem(dataObj);
+					_resultGrid.dbData = _dbData;
+					_dbData.refresh();
+
+					
+				} else {
+					var noDataPop:NoDataPopUp = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false));
+					noDataPop.noDataLabel = "No data found for the selected parameters";
+				}
+				
+				_resultGrid.searchGrid.selectedItem = dataObj;
+				
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+				event.stopImmediatePropagation();
+				
+				if(_loadWin) {
+					_loadWin.closeThis();
+				}
+				
+				if( content_box.contains(_detailBox) ) {
+		 			content_box.removeChild(_detailBox);
+		 			_resultGrid.percentHeight = 100;
+		 			_detailItem = null;
+				}
+			}
+			
+			/**
+			 * dbase export successful handler.
+			 */
+			private function exportSuccessful(event:ObjectDataEvent):void
+			{
+				var fileurl:String = event.values[0];
+				
+				Globs.broker.dispatchEvent( new ObjectDataEvent(EventsGlobals.EXPORT_COMPLETE,this, fileurl) );
+			}
+			
+			/**
+			 * Export active <code>Grid</code> to excel
+			 */  
+			private function exportToExcel(event:MouseEvent):void
+			{
+				//var filename:String =  _resultGrid.filename + '_' + _year.toString() + '_' + _month.toString();
+				var filename:String =  _resultGrid.filename;
+				var Export:ExcelExport = new ExcelExport(_resultGrid.searchGrid, filename, _resultGrid.id);					  
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = _confXML.info;
+				
+			}
+			
+			/**
+			 * Show details for clicked data row in the grid.
+			 */
+			 private function showDetails(event:ListEvent):void
+			 {
+			 	
+			 	if(ObjectUtil.compare(event.itemRenderer.data, _detailItem) == 0 ) {
+			 	
+			 		if( content_box.contains(_detailBox) ) {
+			 			content_box.removeChild(_detailBox);
+			 			_resultGrid.percentHeight = 100;
+			 			_detailItem = null;
+			 		}
+			 		
+			 	} else {
+			 		
+			 		_detailItem = event.itemRenderer.data;
+				 	_detailData = new ArrayCollection();
+				 	
+				 	for ( var box:String in _detailItem.boxes ) {
+				 		if(_detailItem.boxes[box] != null) {
+				 			_detailData.addItem( {box: box, count: _detailItem.boxes[box].count} );
+				 		}
+				 	}
+				 	_detailBox.title = "Details for " + _detailItem.rfid + "\t(" + _detailItem.from + " - " + _detailItem.to + ")";
+				 	_detailGrid.dataProvider = _detailData;
+				 	
+				 	if( !content_box.contains(_detailBox) ) {
+				 		content_box.addChild(_detailBox);
+				 		_resultGrid.percentHeight = 60;
+				 		_detailBox.percentHeight = 40;
+				 	}
+				 }
+			 }
+			 
+			 /**
+			 * @private
+			 * Custom filter function for the auto complete text input
+			 */
+			private function filterMice(item:Object, text:String):Boolean
+			{
+				
+				if ( item.id.toLowerCase().indexOf(text.toLocaleLowerCase()) == -1)
+				{
+					return false;
+				}  else {
+					return true;
+				}
+				
+			}
+            
+            /**
+            * When someting in the data loading or export process went wrong.
+            */
+            private function loadError(event:ObjectDataEvent):void
+            {
+            	
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+            	
+            }
+            
+            /**
+            * @private
+            * 
+            * Enable / disable interface elements
+            */
+            private function set UIenabled(enabled:Boolean):void
+            {
+            	rfid_combo.enabled = enabled;
+            	dateSetter.enabled = enabled;
+            	exportDbfBut.enabled = enabled;
+            	
+            	limit_combo.enabled = enabled;
+            	loadDataBut.enabled = enabled;
+            	
+            	if(enabled && _loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+            }
+			
+			/**            
+			 * Collect parameters for remote call.
+			 */
+			 private function collectParams():Array
+			 {
+			 	var parameters:Array = new Array();
+				parameters["rfid"] = rfid_combo.selectedLabel;
+				parameters["from"] = dateToMysqlDate.format( dateSetter.dateRange[0] as Date );
+				parameters["to"] = dateToMysqlDate.format( dateSetter.dateRange[1] as Date );
+				
+				return parameters;
+			 } 
+            
+		]]>
+	</mx:Script>
+	
+	<mx:DateFormatter id="dateToMysqlDate" formatString="YYYY-MM-DD" />
+		
+	<mx:VBox width="100%" styleName="controlHeader" id="header" verticalAlign="middle" horizontalGap="0" paddingTop="2" paddingBottom="2">
+		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader">
+			<mx:Label styleName="genLabelBright" text="rfid:" height="22" paddingTop="3"/>
+			<classes:AutoCompleteTextInput id="rfid_combo" height="22" filterFunction="filterMice" styleName="autoCompleteTextInput" width="100" labelField="id" />
+				
+			<gridCtrl:GenericDateSetter id="dateSetter" height="22"/>
+			
+			<mx:Button id="exportDbfBut" icon="{exportDbfIcon}" label="Export Data as dBase File" labelPlacement="right" height="24"
+				fontSize="12" 
+				toolTip="Export data for selected rfid within selected data range to a .dbf file" styleName="reloadButton"
+				click="exportToDbf(event)"/>
+	 			
+	 		 <mx:Spacer width="100%"/>
+	 		 <mx:Image source="{helpIcon}" visible="true"
+	 		 	id="showInfoBut" toolTip="show Info" buttonMode="true" useHandCursor="true" mouseChildren="false" click="showInfo()"/>
+		</mx:HBox>
+		<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" width="100%" />
+		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader">
+			<!-- <mx:DateField toolTip="Set date range for the data with a calendar interface" /> -->
+			<mx:Label styleName="genLabelBright" text="Minimum Convex Polygon Percentage:" height="22" paddingTop="3"/>
+			<mx:ComboBox id="limit_combo" dataProvider="{_percentLimit}" styleName="analysisCombo" editable="false" height="22" width="80" rowCount="15"/>
+	 		<mx:Button icon="{reloadIcon}" visible="true"
+	 			fontSize="12"
+	 		 	id="loadDataBut" toolTip="click to calculate the MCP" styleName="reloadButton" height="24"
+	 		 	label="Calculate Minimum Convex Polygon (MCP)" labelPlacement="right" click="loadData(event)"/>
+	 	</mx:HBox>	 			
+	</mx:VBox>
+	<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" />
+	<mx:VDividedBox id="content_box" width="100%" height="100%" paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0" />
+	
+	<mx:HBox id="footer_box" width="100%" styleName="controlFooter">
+		<mx:Spacer width="100%" />
+		<mx:Button id="exportExcelBut" icon="{exportExcelIcon}" label="Export to Excel" labelPlacement="right" height="22" 
+			toolTip="Export current table content to Excel" styleName="normButton"
+			enabled="{_dbData.length > 0}"
+			visible="{_dbData.length > 0}"
+			click="exportToExcel(event)"/>
+	</mx:HBox>	
+		
+</mx:VBox>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml" 
+	horizontalAlign="center"
+	paddingBottom="0" paddingLeft="0" paddingRight="0" paddingTop="0"
+	creationComplete="build()">
+	<mx:Script>
+		<![CDATA[
+			import classes.events.DirectExportEvent;
+			
+			private var _header:String;
+			
+			private function build():void
+			{
+				exportBut.toolTip =  "Export the data for " + _header + " " + this.data.id +  " directly to Excel";	
+			}
+			
+			public function set header(headerLabel:String):void
+			{
+				_header = headerLabel; 
+			}
+		]]>
+	</mx:Script>
+	<mx:Image
+		id="exportBut"
+		source="@Embed('/assets/img/export_excel.png')" 
+		click="{dispatchEvent(new DirectExportEvent(this.data))}"
+		buttonMode="true"
+		useHandCursor="true"/>
+</mx:HBox>

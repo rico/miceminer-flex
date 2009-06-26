@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml" width="100%" height="100%" >
+<mx:Script>
+	<![CDATA[
+		
+		import mx.controls.Image;
+		// the ok img
+		[Embed(source='/assets/img/accept.png')]
+        [Bindable]
+        private var imgOK:Class;
+        
+        // the not ok img
+        [Embed(source='/assets/img/exclamation.png')]
+        [Bindable]
+        private var imgNOK:Class;
+        
+         override public function set data(value:Object):void {
+            super.data = value;
+        	
+        	if(value.status == "1") {
+        		checkImage.source = imgOK;
+        	} else {
+				checkImage.source = imgNOK;        	
+        	}
+        }
+	]]>
+</mx:Script>
+
+<mx:Image id="checkImage" />
+</mx:VBox>

@@ -1,0 +1,529 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"  xmlns:class="classes.components.*" xmlns:grid="components.mainComponents.*"	
+	width="100%" height="100%" creationComplete="build()" 
+	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
+	backgroundAlpha="0.0"
+	verticalGap="0">
+	<mx:Script>
+		<![CDATA[
+			import mx.formatters.DateFormatter;
+			import mx.events.ListEvent;
+			import mx.utils.ArrayUtil;
+			import mx.containers.Panel;
+			import mx.utils.ObjectUtil;
+			import classes.components.Grid;
+			import mx.core.ScrollPolicy;
+			import mx.collections.ArrayCollection;
+			import classes.helpers.XmlHelper;
+			import classes.helpers.DateHelpers;
+			import mx.collections.ArrayCollection;
+			import classes.events.ObjectDataEvent;
+			import classes.events.Globs;
+			import classes.events.EventsGlobals;
+			import classes.GlobalVars;
+			import classes.rpc.GenericDataGetter;
+			import classes.rpc.GetDataByMethod;
+			import components.popUps.*;
+			import classes.helpers.ExcelExport;
+			import mx.managers.PopUpManager;
+			import mx.controls.DataGrid;
+			
+			[Bindable]
+			[Embed(source="/assets/img/export_excel.png")]
+            private var exportExcelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/reload.png")]
+            private var reloadIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/clear.png")]
+            private var clearIcon:Class;
+            
+            /**
+            * The xml configuration for this component must be in a node <code>&lt;analysis&gt;</code> with the id <code>ANALYSIS_ID</code>  
+            * which is a child node of the <code>&lt;analysises&gt;</code> node.
+            */
+            public static const ANALYSIS_ID:String = 'monthly_antennas_rfid';
+			
+			[Bindable]
+			private var _resultGrid:Grid;
+			[Bindable]
+			private var _month:Number;
+			[Bindable]
+			private var _year:Number;
+			[Bindable]
+			private var _yearNumber:Number;
+			[Bindable]
+			private var _yearsData:ArrayCollection;
+			[Bindable]
+			private var _monthsData:ArrayCollection;
+			[Bindable]
+            private var _dbData:ArrayCollection;
+            [Bindable]
+            private var _detailData:ArrayCollection;
+            [Bindable]
+            private var _hours:Array;
+            [Bindable]
+            private var _hoursFrom:Array;
+            [Bindable]
+            private var _hoursTo:Array;
+            private var _from:String;
+            private var _to:String;
+            private var _confXML:XML;
+            private var _loadWin:LoadPopUp;
+            private var _dbDateRange:Array;
+            private var _dateRange:Array;
+            /* private var _antennas:Array; */
+            private var _boxes:Array
+            private var _rfids:Object;
+            
+            /* -----------------------------------------------------------------------------------------------
+			BUILD
+			----------------------------------------------------------------------------------------------- */
+			
+			private function build():void
+			{
+				
+				_loadWin = new LoadPopUp();
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Preparing component";
+				
+				getRfids();
+				
+				_dbData = new ArrayCollection();
+				_dateRange = DateHelpers.getDbRange();
+				
+				header.removeChild(filter);
+				
+				// configuration xml for this
+				_confXML = XmlHelper.getAnalysisXML(ANALYSIS_ID);
+				
+				// configure grid
+				_resultGrid = new Grid(_confXML.grid[0]);
+				_resultGrid.searchGrid.horizontalScrollPolicy = ScrollPolicy.ON;
+				_resultGrid.searchGrid.lockedColumnCount = 1;
+				_resultGrid.dbData = _dbData;
+				_resultGrid.filterLabel = "filter by column";
+				
+				_resultGrid.percentWidth = 100;
+				_resultGrid.percentHeight = 100;
+				
+				// add grid
+				content_box.addChild(_resultGrid);
+				_resultGrid.searchGrid.invalidateSize();
+				
+				// set filter box active component
+				filter_box.activeComp = _resultGrid;
+				
+				
+				// hours
+				var timeFormat:DateFormatter = new DateFormatter();
+				_hours = new Array();
+				var i:int;
+				for (i = 0; i <= 24; i++) {
+				   _hours.push({label: i.toString() + ":00", data: i});
+				}
+				
+				_hoursFrom = _hours.slice(0,_hours.length-1);
+				_hoursTo = _hours.slice(1);
+				
+				from_combo.selectedIndex = 0;
+				to_combo.selectedIndex = _hours.length -1;
+				
+				_boxes = new Array();
+				var j:int;
+				for (j = 0; j <= 40; j++) {
+				  _boxes.push( j.toString() );
+				}
+			}
+			            
+			/* -----------------------------------------------------------------------------------------------
+			DATA LOAD STUFF
+			----------------------------------------------------------------------------------------------- */
+			/**
+			 *  called when the data reload Button is clicked
+			 */ 
+			private function loadData(event:MouseEvent):void
+			{
+			
+				if( header.contains(filter) ) {
+					header.removeChild(filter);
+				}	
+				
+				filter_sep.visible = false;
+				
+				
+				//var mouse:String = mouse_combo.selectedItem.id;
+				_month = month_combo.selectedItem.id;
+				_year = year_combo.selectedItem.id;
+				_from = from_combo.selectedItem.data;
+				_to = to_combo.selectedItem.data;
+				
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = "Loading data ...";
+										
+				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+				
+				// The parameters for the service
+				var parameters:Array = new Array();
+				parameters["year"] = _year;
+				parameters["month"] = _month;
+				parameters["from"] = _from;
+				parameters["to"] = _to;
+				
+				var getDataData:GetDataByMethod = new GetDataByMethod(_confXML.@method, parameters);
+				event.stopImmediatePropagation();
+							
+			}
+			
+			/**
+			 * @private
+			 * get list of rfids with their impant date
+			 */
+			private function getRfids():void
+			{
+				
+				var getRfidsSQL:String = "SELECT id, implant_date FROM " + XmlHelper.getDbTableName('rfids');
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setRfidsData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				var getRfidsData:GenericDataGetter = new GenericDataGetter(getRfidsSQL);
+			}
+			
+			 /**
+			 * @private
+			 * get Years
+			 */
+			 private function getYears():void
+			 {
+			 	month_combo.enabled = false;
+			 	
+				var getYearsSQL:String = "SELECT DISTINCT YEAR(`time`) AS id FROM " + XmlHelper.getDbTableName('direction_results') + " ORDER BY id DESC";
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearsData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				var getYearsData:GenericDataGetter = new GenericDataGetter(getYearsSQL);
+			 }
+			 
+			 /**
+			 * @private
+			 * get Years
+			 */
+			 private function getYearMonths(year:Number):void
+			 {
+			 	var yearStr:String = year.toString();
+			 	
+				var getYearMonthsSQL:String = "SELECT DISTINCT MONTH(`time`) AS id, MONTHNAME(`time`) AS label FROM " + XmlHelper.getDbTableName('direction_results') + 
+						" WHERE YEAR(`time`) = " + yearStr + " ORDER BY id ASC";
+				
+				//trace(getYearWeeksSQL);
+				
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearMonthsData);
+				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				
+				var getMonthsData:GenericDataGetter = new GenericDataGetter(getYearMonthsSQL);	
+			 }
+			 
+			 
+			 /**
+			 * Get weeks for the selected Year
+			 */
+			 private function reloadYearMonths():void
+			 {
+			 	var selectedYear:Number = year_combo.selectedItem.id;
+			 	
+			 	getYearMonths(selectedYear as Number);
+			 	
+			 }
+			 
+			 /* -----------------------------------------------------------------------------------------------
+			EVENT HANDLING (Data loaded events)
+			----------------------------------------------------------------------------------------------- */
+			/**
+			 * @private
+			 * 
+			 * Set rfids data
+			 */
+			private function setRfidsData(event:ObjectDataEvent):void
+			{
+				var rfidsData:ArrayCollection = event.values[0];
+				_rfids = new Object();
+				
+				for each (var rfid:Object in rfidsData) {
+					if(rfid.implant_date == null) {
+						_rfids[rfid.id] = '';
+					} else {
+						_rfids[rfid.id] = rfid.implant_date;
+					}
+				}
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setRfidsData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				event.stopImmediatePropagation();
+				
+				getYears();
+				
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * Set years
+			 */
+			private function setYearsData(event:ObjectDataEvent):void
+			{
+				_yearsData = event.values[0];
+				_yearNumber = _yearsData[0].id;
+				year_combo.enabled = true;
+				
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearsData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				event.stopImmediatePropagation();
+				
+				getYearMonths(_yearNumber);
+				
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * Set years
+			 */
+			private function setYearMonthsData(event:ObjectDataEvent):void
+			{
+				_monthsData = event.values[0];
+				month_combo.enabled = true;
+				
+				month_combo.selectedIndex = _monthsData.length -1;
+
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOADED,setYearMonthsData);
+				Globs.broker.removeEventListener(EventsGlobals.GENERIC_DATA_LOAD_FAILED,loadError);
+				event.stopImmediatePropagation();
+				
+				if(_loadWin != null) {
+					_loadWin.closeThis();
+					
+				}
+			}
+
+			/**
+			 * Add the loaded data to the grid and make the needed calculation 
+			 */
+			private function setData(event:ObjectDataEvent):void
+			{
+				var newData:ArrayCollection = event.values[0];
+				
+				var dataLength:Number = newData.length;
+				var counter:Number = 1;
+				
+				if(dataLength > 0) {
+					
+					var oldDataSource:Array = ObjectUtil.copy(_dbData.source) as Array;
+					
+					for each (var data:Object in newData) {
+					
+						data.month = _month;
+						data.year = _year;
+						data.from_hour = _from + ":00";
+						data.to_hour = _to + ":00"; 
+						var rfid:String = data.rfid;
+						
+						data.implant_date = _rfids[rfid];
+						
+						var antennasString:Array = new Array();
+						/* var dataAnts:Array = ObjectUtil.copy(_boxes) as Array; */
+						var dataBoxes:Array = ObjectUtil.copy(_boxes) as Array;
+						
+						// creating properties for the boxes with 0 values
+						// so that the sort works afterwards
+						for (var boxNum:String in dataBoxes) {
+							data[ dataBoxes[boxNum] ] = 0;
+						}
+						
+						
+						// Convert boxes object to array
+						for (var ant:String in data.antennas) {
+							
+							if(data.antennas[ant] != null) {
+								
+						    	//data[ant] = antString;
+						    	
+						    	// getting the box out of the antenna
+						    	var box:String = ant.substring(0, ant.length -1);
+						    	data[box] += data.antennas[ant];	
+						    	
+						    	if(antennasString.indexOf(ant) == -1 ) {
+						    		antennasString.push(ant);
+						    	}
+						 	}
+						 	
+						 	
+						}
+												
+						// boxes string
+						antennasString.sort(Array.NUMERIC);
+						var antennas_string:String = antennasString.join(", "); 
+						data.antennas_string = antennas_string;
+						 
+						counter += 1;
+					}
+					
+					var updatedDbDataSource:Array = newData.source.concat(oldDataSource);
+					_dbData = new ArrayCollection(updatedDbDataSource);
+					
+					_resultGrid.dbData = _dbData;
+					_dbData.refresh();
+					
+					_loadWin.closeThis();
+					
+					header.addChildAt(filter,header.childDescriptors.length - 1);
+					filter_sep.visible = true;
+					clearDataBut.visible = true;
+					
+				} else {
+					var noDataPop:NoDataPopUp = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false));
+					noDataPop.noDataLabel = "No results found for the selected criterias";
+				}
+
+				
+				filter_box.activeComp = _resultGrid;
+				_resultGrid.searchGrid.selectedIndex = 0;
+				
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+				Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+				event.stopImmediatePropagation();
+			}
+
+			/**
+			 * Export active <code>Grid</code> to excel
+			 */  
+			private function exportData(event:MouseEvent):void
+			{
+				var filename:String =  _resultGrid.filename + '_' + _year.toString() + '_' + _month.toString();
+				var Export:ExcelExport = new ExcelExport(_resultGrid.searchGrid, filename, _resultGrid.id);					  
+			}
+			
+			/**
+			 * Show information for component functionality and handling
+			 */
+			private function showInfo():void
+			{	
+				var infoWin:InfoPopUp = new InfoPopUp();
+				infoWin = InfoPopUp(PopUpManager.createPopUp(this, InfoPopUp, true, "popup"));
+				infoWin.infoText = _confXML.info;
+				
+			}
+			
+			/**
+			 * Label function to show the gender beside the rfid
+			 */
+			 private function customLabel(item:Object):String
+			 {
+			 	return item.id + " (" + item.sex + ")";	
+			 }
+			
+			
+			/**
+			 * @private 
+            */ 
+            private function clear():void
+            {
+            	_dbData.removeAll();
+            	header.removeChild(filter);
+            	_resultGrid.dbData = _dbData;
+	 		 	filter_sep.visible = false;
+	 		 	clearDataBut.visible = false;
+	 		 	 
+            }
+            
+            private function loadError(event:ObjectDataEvent):void
+            {
+            	if(_loadWin != null) {
+            		_loadWin.closeThis();	
+            	}
+            	
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
+            	Globs.broker.removeEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
+            }
+            
+            private function adaptFromHours():void
+            {
+            	var fromIndex:int = from_combo.selectedIndex;
+            	var toIndex:int = to_combo.selectedIndex;
+            	
+            	if(toIndex <= fromIndex) {
+            		from_combo.selectedIndex = toIndex;
+            	}
+            	
+            }
+            
+            private function adaptToHours():void
+            {
+            	var fromIndex:int = from_combo.selectedIndex;
+            	var toIndex:int = to_combo.selectedIndex;
+            	
+            	if(fromIndex >= toIndex) {
+            		to_combo.selectedIndex = fromIndex;
+            	}
+            	
+            }
+		]]>
+	</mx:Script>
+		
+	<mx:VBox width="100%" styleName="controlHeader" id="header" verticalAlign="middle">
+		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader">
+			
+			<mx:Label styleName="genLabelBright" text="Year:" />
+			<mx:ComboBox id="year_combo" dataProvider="{_yearsData}" styleName="analysisCombo" editable="false" height="20" width="65" labelField="id"
+				change="reloadYearMonths()"/>
+				
+			<mx:Label styleName="genLabelBright" text="Month:" />
+			<mx:ComboBox id="month_combo" dataProvider="{_monthsData}" styleName="analysisCombo" editable="false" height="20" width="100" rowCount="12"/>
+			
+			<mx:Label styleName="genLabelBright" text="From:" />
+			<mx:ComboBox id="from_combo" dataProvider="{_hoursFrom}" styleName="analysisCombo" editable="false" height="20" width="70" rowCount="15" change="adaptToHours()"/>
+			<mx:Label styleName="genLabelBright" text="To:" />
+			<mx:ComboBox id="to_combo" dataProvider="{_hoursTo}" styleName="analysisCombo" editable="false" height="20" width="70" rowCount="15" change="adaptFromHours()" />
+			
+			<!-- <mx:DateField toolTip="Set date range for the data with a calendar interface" /> -->
+	 		<mx:Button icon="{reloadIcon}" visible="true"
+	 		 	id="loadDataBut" toolTip="Click to get the data" styleName="reloadButton" height="100%"
+	 		 	label="Get Data" labelPlacement="right" click="loadData(event)"/>
+	 		 
+	 		 
+	 		 <mx:Button icon="{clearIcon}" visible="false"
+	 		 	id="clearDataBut" styleName="normButton" height="100%"
+	 		 	label="Clear Data" labelPlacement="right"
+	 		 	toolTip="Clear all the data from the grid below" 
+	 		 	click="clear()" />
+	 		 	
+	 		 <mx:Spacer width="100%"/>
+	 		 <mx:Image source="{helpIcon}" visible="true"
+	 		 	id="showInfoBut" toolTip="show Info" buttonMode="true" useHandCursor="true" mouseChildren="false"  click="showInfo()"/>
+		</mx:HBox>
+		<mx:HRule styleName="legendSeparator" id="filter_sep" width="100%" visible="false"/>
+		<mx:HBox id="filter" width="100%" styleName="controlPartHeader">
+			<mx:Label styleName="genLabelBright" id="filter_label" text="Filter:"/>
+			<class:DataFilterBox id="filter_box" comboBoxStyleName="analysisCombo" textInputStyleName="analysisClearTextInput"
+	 		 	height="21" width="100%"/>	
+		</mx:HBox>
+	</mx:VBox>
+	<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" />
+	<mx:Canvas id="content_box" width="100%" height="100%" paddingLeft="0" paddingRight="0" paddingTop="0" paddingBottom="0"
+		borderStyle="solid" clipContent="false"
+		horizontalScrollPolicy="off" verticalScrollPolicy="off" />
+	
+	<mx:HBox id="footer_box" width="100%" styleName="controlFooter">
+		<mx:Spacer width="100%" />
+		<mx:Button id="exportExcelBut" icon="{exportExcelIcon}" label="Export to Excel" labelPlacement="right" height="22" 
+			toolTip="Export current table content to Excel" styleName="normButton"
+			enabled="{_dbData.length > 0}"
+			visible="{_dbData.length > 0}"
+			click="exportData(event)"/>
+	</mx:HBox>	
+		
+</mx:VBox>

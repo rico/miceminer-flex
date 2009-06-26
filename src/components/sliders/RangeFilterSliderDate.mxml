@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	xmlns:flexlib="http://code.google.com/p/flexlib/"
+	horizontalGap="3"
+	verticalAlign="middle"
+	width="100%"
+	height="100%"
+	creationComplete="setSliderWidth()">
+	
+	<mx:Script>
+		<![CDATA[
+			//import mx.collections.ArrayCollection;
+			import mx.collections.ArrayCollection
+			import mx.controls.Label;
+			import classes.events.SliderChangedEvent;
+			
+			/**
+			 * The maximum allowed value on the slider.
+			 */
+			[Bindable]
+			public var maxVal:Number;
+			
+			/**
+			 * The label showed on the right of the slider control.
+			 */
+			[Bindable]
+			public var maxValLabel:String;
+			
+			/**
+			 * The minimum allowed value on the slider.
+			 */
+			[Bindable]
+			public var minVal:Number;
+			
+			/**
+			 * The label showed on the left of the slider control.
+			 */
+			[Bindable]
+			public var minValLabel:String;
+			
+			private var dbData:ArrayCollection;
+			private var col:String;
+			
+			/**
+			 * Set the configuration for the date slider.
+			 *
+			 * @param dbData The <code>ArrayCollection</code> which holds the data we want to filter with the data
+			 * @param colInfo The <code>Object</code> contains the <code>minimum</code> and <code>maximum slider</code> values and indicates which field (column)
+			 *					in the <code>ArrayCollection</code> is the one we filter. 
+			 */
+			public function setConf(dbData:ArrayCollection, colInfo:Object):void
+			{
+				this.dbData = dbData;
+				this.col = colInfo.col;
+				this.dbData.source.sortOn(this.col);
+				var minValObj:Object = colInfo.min; 
+            	var maxValObj:Object = colInfo.max;
+            	
+            	minValLabel = minValObj[col];
+            	maxValLabel = maxValObj[col]; 
+				
+				minVal = minValObj.index;
+				maxVal= maxValObj.index;
+				
+				setSliderWidth();
+				disableResetBut();
+
+			}
+			
+			/**
+		 	 * Set the values of the slider.
+			 *
+			 * @param values An <code>Array</code> holding the two values for the slider thumbs.
+			 */
+			public function setValues(values:Array):void
+			{
+				
+				values.sort(Array.NUMERIC);
+				slider.values = values;
+				
+				minValLabel = dbData.source[values[0]][col];
+				maxValLabel = dbData.source[values[1]][col];
+				
+				slider.values[0] != minVal || slider.values[1] != maxVal ? enableResetBut() : disableResetBut();				
+			}
+			
+			/**
+			 * Set slider values to minimal and maximal values.
+			 * 
+			 * <p>Per default a <code>SliderChangedEvent</code> is dispatched.</p>
+			 * 
+			 * @param quit If set to <code>true</code> no <code>SliderChangedEvent</code> is dispatched.
+			 * 
+			 * @see classes.events.SliderChangedEvent
+			 */
+			 public function reset(quiet:Boolean = false):void
+			 {
+			 	if(slider != null) {
+			 	
+				 	slider.values = [minVal, maxVal];
+				 	
+				 	if(!quiet) dispatchEvent(new SliderChangedEvent(SliderChangedEvent.SLIDER_CHANGED_DATE,slider.values));
+				 	disableResetBut();
+				 	
+				 	var minValObj:Object = this.dbData.source[0]; 
+	            	var maxValObj:Object = this.dbData.source[this.dbData.length -1];
+				 	
+				 	minValLabel = minValObj[col];
+	            	maxValLabel = maxValObj[col];
+            	}
+			 }
+
+			/**
+			 * Slider change event handler.
+			 * A  <emp>sliderChangedDate</emp> <code>event</code> is dispatched to the parent component
+			 */
+			private function filterData():void
+			{
+            	dispatchEvent(new SliderChangedEvent(SliderChangedEvent.SLIDER_CHANGED_DATE, slider.values));
+            	
+            	var minValObj:Object = this.dbData.source[slider.values[0]]; 
+            	var maxValObj:Object = this.dbData.source[slider.values[1]];
+            	minValLabel = minValObj[col];
+            	maxValLabel = maxValObj[col];
+            	
+            	slider.values[0] != minVal || slider.values[1] != maxVal ? enableResetBut() : disableResetBut();
+            	
+			}
+			
+			/**
+			* Format the data tip to show the date string and not the position in the array
+			*
+			* @private
+			*/
+			private function formatDataTip(pos:Number):String 
+			{
+				
+          		var currentObj:Object = this.dbData.source[pos]; // get the object from the ArrayCollection the slider is on  
+          		var currentDate:String = currentObj[this.col];
+          		
+          		return currentDate;
+          		 
+      		}
+      		
+      		/**
+			 * @private
+			 */
+			private function enableResetBut():void
+			{
+				resetBut.alpha = 1.0;
+				resetBut.enabled = true;
+				resetBut.toolTip = "click to reset filter slider";
+			}
+			
+			/**
+			 * @private
+			 */
+			private function disableResetBut():void
+			{
+				resetBut.alpha = 0.3;
+				resetBut.enabled = false;
+				resetBut.toolTip = "drag sliders to enable this button";
+			}
+
+			private function getSliderMaxWidth():int
+			{
+				return this.width - filterLabelVal1.width - filterLabelVal2.width - resetBut.width;
+			}
+			
+			/**
+			 * set the slider width property
+			 */
+			/**
+			 * set the slider width property
+			 */
+			private function setSliderWidth():void
+			{
+				var gapsWidth:int = (this.numChildren -1  ) * (this.getStyle("horizontalGap") as int);
+				
+				slider.maxWidth = this.width - filterLabelVal1.width - filterLabelVal2.width - resetBut.width - gapsWidth -20;
+				slider.width = (maxVal-minVal * 7);
+				
+				slider.width > slider.maxWidth ? slider.width = slider.maxWidth : slider.width = slider.width;
+				slider.width < slider.minWidth ? slider.width = slider.minWidth : slider.width = slider.width;
+				slider.invalidateSize();
+				
+			}
+			
+		]]>
+	</mx:Script>
+	<mx:HBox id="filterLabelVal1" styleName="filterLabelCanv" height="20" horizontalGap="0">
+		<mx:Label styleName="filterLabel" text="{minValLabel}" />
+	</mx:HBox>
+	
+	<flexlib:HSlider id="slider" thumbCount="2" snapInterval="1"
+		dataTipFormatFunction="formatDataTip" styleName="filterSlider" sliderThumbClass="classes.skins.CustSliderThumbClass"
+		toolTip="drag the handlers to set a range. You can shift the range by dragging the bar between the handlers." 
+		minimum="{minVal}" maximum="{maxVal}" values="{[minVal, maxVal]}" 
+		change="filterData()"
+		/>
+		
+	<mx:HBox id="filterLabelVal2" styleName="filterLabelCanv" height="20" horizontalGap="0" >	
+		<mx:Label styleName="filterLabel" text="{maxValLabel}"/>
+	</mx:HBox>
+	
+	<mx:Button id ="resetBut" icon="@Embed(source='/assets/img/clear.png')" visible="true" styleName="normButton" height="20" label="reset filter" click="reset()" />
+	
+</mx:HBox>

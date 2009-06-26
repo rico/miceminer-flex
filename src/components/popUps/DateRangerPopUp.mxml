@@ -1,0 +1,252 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" title="Date Picker" creationComplete="initComp()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.HRule;
+			import mx.controls.Label;
+			import mx.controls.Text;
+			import mx.containers.VBox;
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;
+			import classes.helpers.DateHelpers;
+			import mx.events.CalendarLayoutChangeEvent;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/help.png")]
+            private var helpIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/ok.png")]
+            private var okIcon:Class;
+			
+			// The date range for the component
+			// This is set when the user changes the date
+			private var _compDateRange:Array;
+			
+			/**
+			 * If set to <code>true</code>, clicking on a day the whole week will automatically get selected.
+			 */ 
+			[Bindable]
+			public var weekSelection:Boolean = false;
+			
+			[Bindable]
+			private var _selectableRange:Object;
+			// dates in the database
+			[Bindable]
+			private var _startDateF:String;
+			[Bindable]
+			private var _startDate:Date;
+			[Bindable]
+			private var _endDateF:String;
+			[Bindable]
+			private var _endDate:Date;
+			[Bindable]
+			private var _helpText:String;
+			
+			// selected range 
+			[Bindable]
+			private var _rangeStartF:String;
+			
+			[Bindable]
+			private var _rangeEndF:String;
+			
+			// called on flex init complete
+			private function initComp():void
+			{
+				
+				PopUpManager.centerPopUp(this);
+				
+				// DB DATE RANGE
+				var dbDateRange:Array = DateHelpers.getDbRange();
+				_startDate = dbDateRange[0];
+				_endDate = dbDateRange[1];
+				
+				_selectableRange = {rangeStart:_startDate, rangeEnd:_endDate}; // selectable Range in the dateChooser
+				
+				var dbDateRangeF:Array = DateHelpers.formatDateRange(dbDateRange)
+				_startDateF = dbDateRangeF[0];
+				_endDateF = dbDateRangeF[1];
+				
+				// Set help Text
+				if(weekSelection) {
+					_helpText ="To choose a week just click on a day <br>within the week you wish to choose."; 
+							 
+				} else {
+					_helpText = "Change the selection by clicking on a date in the calendar above. <br>Select a range of dates by holding down the <b>SHIFT</b> key.";
+				}
+				
+				_helpText += "<br>Dates colored grey are out of the selectable date range.";
+				
+				// COMPONENT DATE RANGE
+				if(compDateRange == null) {
+					// set selected range
+					_compDateRange = [ dbDateRange[1], dbDateRange[1] ];
+				}
+				
+				// handle week selection 
+				if(weekSelection) {
+					dateChooser.allowMultipleSelection = true;
+					dateChooser.allowDisjointSelection = true;
+					_compDateRange = DateHelpers.weekDateRange(_compDateRange[1]);
+				}
+				
+				// setting the date range in the dateChooser
+				dateChooser.selectableRange= _selectableRange;
+				dateChooser.selectedRanges = [ {rangeStart: _compDateRange[0], rangeEnd: _compDateRange[1] }];
+				dateChooser.displayedMonth = _compDateRange[1].month;
+				dateChooser.displayedYear =  _compDateRange[1].fullYear;
+				
+				// display selected Range;
+				var compDateRangeF:Array = DateHelpers.formatDateRange(compDateRange);
+				_rangeStartF = compDateRangeF[0];
+				_rangeEndF = compDateRangeF[1];
+			}
+			
+			
+			/**
+			 * Called when the user selects another date.
+			 */
+			private function getDateRange(event:CalendarLayoutChangeEvent):void 
+			{
+        
+                // Make sure selectedDate is not null.
+                if (event.currentTarget.selectedDate != null) {
+                	
+                	var dateRange:Array;
+                	
+                	// check week selection
+                	if(weekSelection) {
+                		var chosenDate:Date = event.currentTarget.selectedDate;
+                		var weekRange:Array = DateHelpers.weekDateRange(chosenDate);
+                		dateRange = [ {rangeStart: weekRange[0], rangeEnd: weekRange[1] }];
+                		dateChooser.selectedRanges = dateRange;
+                		
+                	} else {
+                		//Access the array with the date range from the event object
+                		dateRange = dateChooser.selectedRanges;
+                	}
+					
+	                var rangeStart:Date = dateRange[0].rangeStart;        
+	                var rangeEnd:Date = dateRange[0].rangeEnd;
+	                
+	                var dateRangeF:Array = DateHelpers.formatDateRange([rangeStart, rangeEnd]);
+	                
+	                // format the date to display
+	                _rangeStartF = dateRangeF[0];
+	                _rangeEndF = dateRangeF[1];
+	                
+	                trace("[DateRangePopUp] _startDate: " + _rangeStartF + "\_endDate: " + _rangeEndF);
+						
+					// setting the new component data range
+					_compDateRange = [rangeStart, rangeEnd];	
+                }
+            }
+            
+            /**
+			 * @private
+			 * 
+			 * Show help Text
+			 */
+			 private function showHelp():void
+			 {
+			 	var helpBox:VBox = new VBox();
+			 	helpBox.percentWidth = 100;
+			 	helpBox.styleName = "InfoPopUp";
+			 	helpBox.setStyle("verticalGap", 3);
+			 	helpBox.verticalScrollPolicy = "off";
+			 	
+			 	var helpTitle:Label = new Label();
+			 	helpTitle.setStyle("color", 0xFFFFFF);
+			 	helpTitle.styleName = "genLabelDark";
+			 	helpTitle.text = "Information";
+			 	helpBox.addChild(helpTitle);
+			 	
+			 	var rule:HRule = new HRule();
+			 	rule.percentWidth = 100;
+			 	rule.styleName = "brightRule";
+			 	
+			 	helpBox.addChild(rule);
+			 	
+			 	var textContent:Text = new Text();
+			 	textContent.setStyle("color", 0xFFFFFF);
+			 	textContent.styleName = "compLabel";
+			 	textContent.htmlText = _helpText;
+			 	
+			 	helpBox.addChild(textContent);
+			 	
+			 	showHelpBut.visible = false;
+			 	addChildAt(helpBox,1);
+			 	
+			 } 
+			
+			/**
+			 * The selected date range.
+			 */
+			public function get compDateRange():Array
+            {
+            	return _compDateRange;
+            }
+             
+			/**
+             * @private 
+             */ 
+            public function set compDateRange(dateRange:Array):void
+            {
+            	_compDateRange = dateRange;
+            	
+		   }
+            
+            
+				 
+					
+			
+		]]>
+	</mx:Script>
+		
+	<mx:VBox styleName="dateRangerCont" width="100%" >
+		<mx:HBox width="100%" verticalAlign="middle">
+			<mx:Label text="Date range available:" styleName="genLabelDark"/>
+			<mx:Spacer width="100%" />
+			<mx:Image id="showHelpBut" source="{helpIcon}" click="showHelp()" toolTip="click to get help"/>
+		</mx:HBox>
+		<mx:HRule styleName="darkRule" width="100%"  />
+		<mx:HBox width="100%" horizontalGap="2" verticalAlign="middle">
+			<mx:Label text="From:" styleName="compLabel" fontWeight="bold"/>
+			<mx:Label text="{_startDateF}" styleName="compLabel"/>
+			<mx:Spacer width="10" />
+			<mx:Label text="to:" styleName="compLabel" fontWeight="bold"/>	
+			<mx:Label text="{_endDateF}" styleName="compLabel"/>	
+		</mx:HBox>
+	</mx:VBox>	
+		
+	<mx:DateChooser id="dateChooser" 
+		allowDisjointSelection="false" allowMultipleSelection="true"
+		yearNavigationEnabled="true" 
+		width="100%" height="100%" styleName="dateChooser"
+		change="getDateRange(event)" 
+		/>
+	
+	<mx:VBox styleName="dateRangerCont" width="100%">
+		<mx:Label text="Current selection:" styleName="genLabelDark"/>
+		<mx:HRule styleName="darkRule"  width="100%"  />
+		<mx:HBox width="100%" horizontalGap="2" backgroundAlpha="0" verticalAlign="middle">
+			<mx:Label text="From:" styleName="compLabel" fontWeight="bold" />
+			<mx:VBox styleName="dateFormBack" >
+				<mx:Label text="{_rangeStartF}" />
+			</mx:VBox>
+			<mx:Spacer width="10" />
+			<mx:Label text="to:" styleName="compLabel" fontWeight="bold" />
+			<mx:VBox styleName="dateFormBack" >
+				<mx:Label text="{_rangeEndF}" />
+			</mx:VBox>	
+		</mx:HBox>
+	</mx:VBox>
+		
+	<mx:HBox width="100%">
+		<mx:Spacer width="100%"/>
+		<mx:Button styleName="headerButton" id="doneBut" label="done" icon="{okIcon}"/>
+	</mx:HBox>
+</mx:TitleWindow>
