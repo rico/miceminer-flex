@@ -11,7 +11,9 @@ package classes.events
 	public class ChangeHeaderEvent extends Event
 	{
 		
-		// Define a public variable to hold the state of the enable property.
+		/**
+		 * Event parameter of type <code>Grid</code>.
+		 */
         public var grid:Grid;
         
         /**
@@ -24,7 +26,7 @@ package classes.events
         * @param grid The <code>Grid</code> component.
         */
         public function ChangeHeaderEvent(grid:Grid) {
-                // Call the constructor of the superclass.
+                
                 super(CHANGE_HEADER,true,true);
                 this.grid = grid;
         }

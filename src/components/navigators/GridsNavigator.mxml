@@ -109,6 +109,7 @@
 				//_selSearchComp = new Grid();
 				this.addEventListener("requestViewChart", viewRequested);
 				this.addEventListener("restoreView", viewRequested);
+				this.addEventListener(ChangeLabelEvent.SET_LABEL, setExportToExcelLabel);
 				
 
 			}
@@ -508,6 +509,15 @@
 			private function closeDataTabNav():void
 			{
 				dispatchEvent( new RequestViewEvent(RequestViewEvent.DATA_CLOSED) );
+			}
+			
+			/**
+			 * Change the label of the <code>exportExcelBut</code> button to the passed string.
+			 */ 
+			private function setExportToExcelLabel(event:ChangeLabelEvent):void
+			{
+				exportExcelBut.label = event.labelStr;
+				event.stopImmediatePropagation();
 			}
 	      	        
 		]]>    

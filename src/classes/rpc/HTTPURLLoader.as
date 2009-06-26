@@ -5,7 +5,7 @@
  *	@author Abdul Qabiz (mail at abdulqabiz dot com) 
  *	@version 1.01 (3/5/2007)
  *	@availability 9.0+
- *	@usage<code>new HTTPURLLoader ();</code>
+ *	@usage new HTTPURLLoader();
  *	@example
  *		<code>
  *			httpURLLoader = new HTTPURLLoader ();

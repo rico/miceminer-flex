@@ -846,6 +846,9 @@ Text {
 	fontFamily: 'MyriadPro';
 }
 
+
+
+
 /* ------------------------------------------------
 	CONTROLLER
 ------------------------------------------------ */
@@ -977,6 +980,7 @@ Text {
 }
 
 .searchChartAcc {
+	header-height: 20;
 	horizontal-align:center;
 	vertical-align:middle;
 	color: #666666;
@@ -998,13 +1002,35 @@ Text {
 }
 
 .searchChartAccHeader {
-	font-size: 12;
-	fontFamily: 'MyriadPro';
-	font-weight:normal;
-	color: #000000;
-	background-alpha: 0;
-	border-style:none;
-	border-thickness: 0;
+	upSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    overSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    downSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    disabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedUpSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedOverSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDownSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+    selectedDisabledSkin:ClassReference('flexlib.skins.EnhancedButtonSkin');
+	cornerRadii: 0, 0, 0, 0;
+	borderColors: #FFFFFF, #FFFFFF;
+ 	overBorderColors: #FFFFFF, #FFFFFF;
+ 	selectedBorderColors: #FFFFFF, #FFFFFF;
+ 	borderThickness: 1;
+ 	borderAlpha: 1;
+ 	fillColors: #414141, #414141;
+ 	fillAlphas: 1, 1;
+ 	fillColorRatios: 0, 255;
+ 	overFillColors: #4e4e4e, #4e4e4e;
+ 	overFillAlphas: 0.75, 0.75;
+ 	overFillColorRatios: 0, 255;
+ 	selectedFillColors: #414141, #414141;
+ 	selectedFillAlphas: 1, 1;
+ 	selectedFillColorRatios: 0, 255;
+ 	highlightAlphas: 0, 0;
+ 	color: #FFFFFF;
+ 	textRollOverColor: #FFFFFF;
+ 	font-weight:normal;
+ 	font-size: 12;
+ 	fontFamily: 'MyriadPro';
 }
 
 

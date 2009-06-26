@@ -259,7 +259,7 @@
 				
 				// add label to legend box
 				var legendLabel:Label = new Label(); 
-				legendLabel.text = _chartField;
+				legendLabel.text = _chartXML.field.@label;
 				legendLabel.styleName = "genLabelBright";
 				
 				_legendBox.addChild(legendLabel);

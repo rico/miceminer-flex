@@ -2,6 +2,7 @@ package classes.components
 {
 	import classes.datastructures.Item;
 	import classes.events.ChangeHeaderEvent;
+	import classes.events.ChangeLabelEvent;
 	import classes.events.CompBuiltEvent;
 	import classes.events.DirectExportEvent;
 	import classes.events.LoadDataEvent;
@@ -422,7 +423,6 @@ package classes.components
 			});
 			
 			_searchGrid.enabled = true;
-			//_searchGrid.editable = "";
 			_searchGrid.editable = false;
 			_searchGrid.dragEnabled = false;
 			_searchGrid.dataProvider = _dbData;
@@ -452,9 +452,6 @@ package classes.components
 			
 			for each (var colXML:XML in columnsXML) {
 				
-				//var sort:String = colXML.@sort;
-					
-				//trace("[searchGrid]\tcolXML: " + colXML.toXMLString());
 				var gridColumn:DataGridColumn = new DataGridColumn();
 				
 				gridColumn.dataField = colXML.@field;
@@ -561,6 +558,7 @@ package classes.components
 					// add the needed sort
 					var sort:String = _xmlConfig.col.(@field == column.dataField).@sort; 
 					switch(sort) {
+							// numeric
 							case "numeric":
 								
 								minMax = DataHelpers.getMinMaxInt(_dbData, column.dataField); 
@@ -569,8 +567,9 @@ package classes.components
 							break;
 							
 							break;
+							// date
 							case "date":
-								//GridColumn.sortCompareFunction = dateSortFunction;
+								
 								minMax = DateHelpers.getMinMaxDate(_dbData, column.dataField, true);
 								_filterInformation.push({label: column.dataField, comboLabel: comboText, col: column.dataField,
 													 sort:sort, min: minMax[0], max: minMax[1], value: [minMax[0].index, minMax[1].index]});
@@ -609,14 +608,17 @@ package classes.components
 			
 			_gridView = new State();
 			_gridView.name = "gridView";
+			_gridView.addEventListener(FlexEvent.ENTER_STATE, setExportLabel);
 			_gridView.overrides.push(_removeSearchCharts, _searchGridFullWidth);
 			
 			_splitView = new State();
 			_splitView.name = "splitView";
+			_splitView.addEventListener(FlexEvent.ENTER_STATE, setExportLabel);
 			_splitView.overrides.push(_searchGridHalfWidth, _searchChartHalfWidth);
 			
 			_chartView = new State();
 			_chartView.name = "chartView";
+			_chartView.addEventListener(FlexEvent.ENTER_STATE, setExportLabel);
 			_chartView.overrides.push(_removeSearchGrid, _searchChartFullWidth);
 			
 			states.push(_gridView, _splitView, _chartView);
@@ -870,7 +872,7 @@ package classes.components
 		////////////////////////////////////////////////////////////////
 		
 		/**
-		 * Change the label when the array collection changes
+		 * Change the label when the array collection changes.
 		 */
 		private function changeLabel(event:Event):void
 		{
@@ -897,6 +899,20 @@ package classes.components
 			
 			return foundObjectIndex;
 		}
+		
+		/**
+		 * Event handler hich dispatches an event itself to set the right label of the <code>exportExcelBut</code> button label
+		 *  in <code>GridsNavigator</code> component.
+		 */
+		 private function setExportLabel(event:FlexEvent):void
+		 {
+		 	if( currentState == 'chartView' && _searchCharts.activeChartXML.hasOwnProperty('grid') ) {
+		 		dispatchEvent( new ChangeLabelEvent( "Export chart data to Excel" ) );	
+		 	} else {
+		 		dispatchEvent( new ChangeLabelEvent( "Export to Excel" ) );
+		 	}
+		 	
+		 }
 
 	}
 }

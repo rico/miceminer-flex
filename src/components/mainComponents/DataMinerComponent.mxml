@@ -113,7 +113,7 @@
 				this.addEventListener(LoadDataEvent.LOAD_DATA, loadData);
 				this.addEventListener(LoadDataEvent.LOAD_DATA_FOR_COMP, loadDataForComp);
 				this.addEventListener(LoadItemsEvent.LOAD_ITEMS, loadItems);
-				//this.addEventListener(LoadItemsEvent.LOAD_ITEMS"showItems", loadItems);
+
 				this.addEventListener(ChangeHeaderEvent.CHANGE_HEADER,changeHeader);
 				this.addEventListener(DateValidEvent.DATE_CHANGED,dateValid);
 				
@@ -121,7 +121,6 @@
 				this.addEventListener(RequestViewEvent.ITEMS_VIEW, viewRequested);
 				this.addEventListener(RequestViewEvent.RESTORE_VIEW, viewRequested);
 				this.addEventListener(RequestViewEvent.DATA_CLOSED, viewRequested);
-				
 				
 				// getting xml for the the grids           	
             	_itemGridsXML = XmlHelper.getItemsGridsInDateRangeXML();

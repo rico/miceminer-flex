@@ -131,14 +131,10 @@
 	        {
 	        	addEventListener(CompBuiltEvent.SEARCH_CHART_ELEMENT,chartReady);
 	        	
-	        	if( _charts.length > 1) {
-	        		this.addChildAt(_chartBox,0);
-	        		for (var i:int = 0; i < _charts.length; i++) {
- 						_chartBox.addChild(_charts[i]);
-					}
-	        	} else {
-					this.addChild(_charts[0]);	        	
-	        	}
+        		this.addChildAt(_chartBox,0);
+        		for (var i:int = 0; i < _charts.length; i++) {
+ 					_chartBox.addChild(_charts[i]);
+				}
 	        }
 	        
 	        /**

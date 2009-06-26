@@ -46,7 +46,7 @@ package classes.events
         * @param type One of the constants defined for this event
         */
         public function CompBuiltEvent(type:String, component:*) {
-                // Call the constructor of the superclass.
+                
                 super(type,true,false);
                 _component = component;
         }
