@@ -6,7 +6,7 @@
 <libraryPathEntry kind="4" path=""/>
 <libraryPathEntry kind="3" linkType="1" path="/chooser/bin/chooser.swc" useDefaultLinkType="false"/>
 <libraryPathEntry kind="3" linkType="1" path="src/lib/flexlib.swc" useDefaultLinkType="false"/>
-<libraryPathEntry kind="3" linkType="1" path="src/lib/libRaVis2.swc" useDefaultLinkType="false"/>
+<libraryPathEntry kind="3" linkType="1" path="/libRaVis2/bin/libRaVis2.swc" useDefaultLinkType="false"/>
 </libraryPath>
 <sourceAttachmentPath/>
 </compiler>

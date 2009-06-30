@@ -3,6 +3,7 @@
 	backgroundColor="#333333"
 	backgroundAlpha="0.75"
 	initialize="init()"
+	mouseUp="savePos()"
 	>
 	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
 	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
@@ -152,8 +153,7 @@
 					
 					mouseEnabled = true;
 					this.alpha = 1;
-					//fadeIn.play([this]);
-					//nodeText.text = "active";
+					
 				} else {
 					
 					if( contains(nodeText) ) {
@@ -163,8 +163,6 @@
 					selected = false;
 					mouseEnabled = false;
 					this.alpha = 0;
-					//fadeOut.play([this]);
-					//nodeText.text = "not active";
 				}
 			}
 			
@@ -190,6 +188,15 @@
 			public function get highlight():Boolean
 			{
 				return _highlight;
+			}
+			
+			/**
+			 * Store position when node has moved (dragged)
+			 */
+			private function savePos():void
+			{
+				this.data.data.@x = this.data.x;
+				this.data.data.@y = this.data.y;
 			}
 			
 		]]>

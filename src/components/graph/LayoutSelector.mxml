@@ -154,7 +154,6 @@
             {
             	_run = run;
             	graphData.layouterRunning = _run;
-            	
 				var layouter:ILayoutAlgorithm;
 								
 				/* check if we have a vgraph at all */
@@ -163,7 +162,7 @@
 					return;
 				}
 	
-				/* kill off animation in old layouter if present */
+				// stop layouter 
 				if(vgraph.layouter != null) {
 					vgraph.layouter.resetAll();
 					/* remove also existing references thus
@@ -172,29 +171,21 @@
 				}
 	
 				/* now choose the selected layouter */
+				
 				if(_run) {
-					storeNodeLocations();
 					layouter = new ForceDirectedLayouter(vgraph);
-					
+					layouter.autoFitEnabled = true;
+					layouter.layoutPass();
 				} else {
-					
-					storeNodeLocations();
 					layouter = new DirectPlacementLayouter(vgraph);
 				}
 					
 				vgraph.layouter = layouter;
+				//layouter.layoutPass();
 				vgraph.draw(); // run the layout
             	
             }
 			
-			private function storeNodeLocations():void
-			{
-				for each (var vnode:IVisualNode in vgraph.visibleVNodes) {
-						
-						vnode.data.@tempX = vnode.viewX + vnode.view.width / 2;
-						vnode.data.@tempY = vnode.viewY + vnode.view.height / 2;	
-					}
-			}
 			
 		]]>
 	</mx:Script>

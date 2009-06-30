@@ -16,6 +16,7 @@
 	hide="showHide(event)">
 	<mx:Script>
 		<![CDATA[
+			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
 			import mx.graphics.ImageSnapshot;
 			import components.popUps.InfoPopUp;
 			import mx.controls.advancedDataGridClasses.AdvancedDataGridListData;
@@ -364,8 +365,11 @@
 						_rootNode.selected = true;
 						_selGraphData.rootNode = vnode;
 						selectRootNodeInGrid();
+						centerGraphByRootNode();
 						
 					}
+					
+					
 				}
 			}
 			
@@ -445,7 +449,7 @@
 			
 			/**
 			 * @private
-			 * Changes the graph when another component has been chosen in the comboCox 
+			 * Changes the graph when another component has been chosen in the comboBox to choose the data 
 			 */
 			private function changeGraphFromList(event:ListEvent):void
 			{
@@ -459,27 +463,26 @@
 			 */
 			private function changeGraph(graphData:GraphData):void
 			{
+				
 				// getting the selected graphData
 				restoreNormalEdge( new CloseEvent(CloseEvent.CLOSE));
-				trace("change graph from " + _selGraphData.graphId + " to " + graphData.graphId);
 				
-				manFilter.value = graphData.filterValue;
+				_selGraphData = graphData;
+				manFilter.value = _selGraphData.filterValue;
+				_selGraphData.edges.filterFunction = manualFilter;
 				
-				
-				graphData.edges.filterFunction = manualFilter;
-				layoutCtrl.run = graphData.layouterRunning;
 				
 				var rootNodeStringId:String;
 				
-			 	if(graphData.rootNode == null) {
-			 		rootNodeStringId = (graphData.graph.nodes[0] as INode).stringid;
+			 	if(_selGraphData.rootNode == null) {
+			 		rootNodeStringId = (_selGraphData.graph.nodes[0] as INode).stringid;
 			 	} else {
-			 		rootNodeStringId = graphData.rootNode.node.stringid;
+			 		rootNodeStringId = _selGraphData.rootNode.node.stringid;
 			 	}
 				
-				vgraph.assignNewGraph(graphData.graph,false, rootNodeStringId);
-				_selGraphData = graphData;
+				vgraph.assignNewGraph(_selGraphData.graph,false, rootNodeStringId);
 				
+				layoutCtrl.run = _selGraphData.layouterRunning;
 				setTimeInputValues();
 				filterData();
 				updateTimeInput();	 	
@@ -584,13 +587,6 @@
 				{
 					nodes.selectedItem = selectedItem;
 				}
-				
-				/* if(selectedItem != null) {				
-					nodes.selectedItem = selectedItem;
-					//nodes.scrollToIndex( _nodeBasedMeasures.getItemIndex(rootNodeBasedMeasures) );
-				} else {
-					nodes.selectedIndex = -1;
-				} */
 			
 			}
 			
@@ -622,7 +618,6 @@
 				// An item is cklicked	
 				} else {
 					
-					
 					// change graph if needed
 					if(_selGraphData.graphId != itemToSelect.graphId) 
 					{
@@ -645,13 +640,58 @@
 					
 						if(itemToSelect.rfid == node.stringid)
 						{
-							vgraph.currentRootVNode = node.vnode;
-							vgraph.centerNodeByStringId(node.stringid);
+							//vgraph.currentRootVNode = node.vnode;
+							updateRootNode(node.vnode);
+							vgraph.redrawEdges();
+							//vgraph.centerNodeByStringId(node.stringid);
 							break;
 						}
 					}
 				}
 				
+			}
+			
+			/**
+			 * @private
+			 * 
+			 * Center graph
+			 */
+			private function centerGraph():void
+			{
+				var bb:Rectangle = vgraph.calcNodesBoundingBox();
+				var bCenter:Number = (bb.x - (15 * vgraph.scale) + (bb.width / 2)) * vgraph.scale; // the center of bounds
+				
+				var gCenter:Number = vgraph.center.x;
+				// adjust the vgraph center since the box with the node based measures eats up space
+				if(dataBox.width != _minimizedWidth) {
+					gCenter += dataBox.width/3;
+				}
+				vgraph.scroll( (gCenter - bCenter) / vgraph.scale, 0);
+				vgraph.redrawEdges();	
+			}
+			
+			/**
+			 * @private 
+			 * 
+			 * Center graph by root node
+			 */
+			private function centerGraphByRootNode():void
+			{
+				if(_selGraphData && _selGraphData.layouterRunning) {
+					var nodeCenter:Number = _selGraphData.rootNode.viewCenter.x * vgraph.scale;
+					
+					// y-scroll
+					vgraph.scroll(0, -1 * vgraph.origin.y);  // I overrid scale() to scroll only the X, hence the 0
+					
+					// x-scroll
+					var gCenter:Number = vgraph.center.x;
+					// adjust the vgraph center since the box with the node based measures eats up space
+					if(dataBox.width != _minimizedWidth) {
+						gCenter += dataBox.width/4;
+					}
+					
+					vgraph.scroll((gCenter - nodeCenter) / vgraph.scale, 0);
+				}
 			}
 			/* -----------------------------------------------
 				FILTERING GRAPH
@@ -824,36 +864,6 @@
 					_loadWin.closeThis();
 				}	
 			} 
-			
-			/**
-			 * Refresh the vgraph 
-			 */ 
-			private function graphRefresh():void
-			{
-				
-				layoutCtrl.run = _selGraphData.layouterRunning;
-				
-				// assign new graph and filter data
-				if(_selGraphData.rootNode == null) {
-			 		vgraph.assignNewGraph(_selGraphData.graph,false);
-			 	} else {
-			 		vgraph.assignNewGraph(_selGraphData.graph,false, _selGraphData.rootNode.node.stringid);
-			 	}
-			 	
-			 	// filter the data
-			 	filterData();
-			 	
-			 	// setting root node
-			 	var rootNode:IVisualNode;
-			 	if(_selGraphData.rootNode == null) {
-			 		rootNode = (_selGraphData.graph.nodes[0] as INode).vnode;	
-			 	} else {
-			 		rootNode = _selGraphData.rootNode;
-			 	}
-			 	
-			 	updateRootNode(rootNode);
-			 	//vgraph.currentRootVNode = rootNode;
-			}
 			
 			/**
 			 * @private
@@ -1140,7 +1150,7 @@
 	<!-- <mx:Style source="styles.css"/> -->
 	
 	<!-- Effects -->
-	<mx:Resize id="resizeBox" duration="500"/>
+	<mx:Resize id="resizeBox" duration="500" effectEnd="{ centerGraphByRootNode() ; vgraph.redrawEdges() } "/>
 	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
 	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
 	
@@ -1171,26 +1181,14 @@
 			styleName="SuperPanel" 
 			x="{this.graphCnvs.width - this.layoutControls.width -5}" 
 			y="30" 
-			width="200" height="335" verticalScrollPolicy="off"> 
+			width="200" height="280" verticalScrollPolicy="off"> 
 			<mx:VBox width="100%" height="100%" styleName="graphControlBox" verticalGap="10">
 				<graph:LinkLength id="linkLength" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" enabled="true" />
 				<graph:DegreesOfSeparation id="dosSlider" width="100%" bottom="0" left="5" vgraph="{vgraph}" graphData="{_selGraphData}" />
 				<graph:Zoom id="zoomCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" />
 				<graph:ScaleLabels id="scaleCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}"/>
 				<graph:ShowEdgeLabels id="showEdgeLabels" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}" />
-				<mx:VBox horizontalGap="5" width="100%">
-					<graph:LayoutSelector id="layoutCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}"/>
-					<mx:Button id="centerButton" styleName="centerButton" width="100%"
-							click="{vgraph.scroll(-vgraph.origin.x, -vgraph.origin.y); vgraph.refresh() }"  
-							label="recenter graph" 
-							icon="{centerIcon}" 
-							toolTip="re-center the graph in the view area"/>
-					<mx:Button id="refreshButton" styleName="centerButton" width="100%"
-						click="graphRefresh()"  
-						label="refresh graph" 
-						icon="{refreshIcon}" 
-						toolTip="refresh the graph"/>	
-				</mx:VBox>
+				<graph:LayoutSelector id="layoutCtrl" width="100%" vgraph="{vgraph}" graphData="{_selGraphData}"/>
 			</mx:VBox>
 		</components:SuperPanel>
 		
