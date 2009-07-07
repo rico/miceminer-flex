@@ -103,6 +103,7 @@
 					case 'ioError':
 					case 'securityError':
 						Alert.show("ExportPopUp [downloadHandler]: An error occured => " + event.type.toString());
+						_fileRef.dispatchEvent(new Event(Event.CANCEL));
 					break;	
 				}
 				

@@ -1,10 +1,13 @@
 package classes.datastructures
 {
+	import classes.helpers.DateHelpers;
 	import classes.helpers.NodeBasedMeasures;
+	
 	import flash.events.Event;
 	import flash.events.EventDispatcher;
 	import flash.utils.Dictionary;
 	
+	import mx.collections.ArrayCollection;
 	import mx.collections.XMLListCollection;
 	
 	import org.un.cava.birdeye.ravis.graphLayout.data.Graph;
@@ -37,7 +40,7 @@ package classes.datastructures
 		 * &lt;/graph&gt;	
 		 * </code></pre>
 		 * 
-		 * <p>Some explanations of the grahp data format.</p>
+		 * <p>Some explanations of the graph data format.</p>
 		 * <ul>
 		 * <p>The node names and attributes are <b>cases sensitive</b>.</li>
 		 * <li>The root element is called <b>&lt;root&gt;</b></li>
@@ -63,14 +66,16 @@ package classes.datastructures
 		public var graph:IGraph;
 		
 		/**
-		 * The nodes within this graph
+		 * An <code>Array</code> of the nodes within this graph.
 		 */
 		public var nodes:Array;
 		
 		/**
-		 * The edges within this graph
+		 * The edges within this graph as an <code>XMLListCollection</code>.
 		 */
 		public var edges:XMLListCollection;
+		
+		private var _edgesAC:ArrayCollection;
 		
 		/**
 		 * The filter value
@@ -187,12 +192,26 @@ package classes.datastructures
 			filterMinimum = 10000;
 			filterMaximum = 0;
 			
+			// edges values
+			_edgesAC = new ArrayCollection();
 			for each ( var edge:XML in edges.source ) {
 				
 				var edgeVal:Number = edge.attribute(filterProperty);
+				var duration:String = DateHelpers.secToTime( edge.attribute('sec').toString() ); 
+				_edgesAC.addItem( 
+				{
+					label: label,
+					fromID: edge.attribute('fromID').toString(),
+					toID: edge.attribute('toID').toString(),
+					dt: duration,
+					count: edge.attribute('count').toString() 
+				} );
+				
 				filterMinimum = Math.min( edgeVal, filterMinimum);
 				filterMaximum = Math.max( edgeVal, filterMaximum) -1;
 			}
+			
+			
 			
 			filterValue = filterMinimum;
 			
@@ -280,6 +299,26 @@ package classes.datastructures
 			return _graphId;
 		}
 		
+		/**
+		 * The edges within this graph as an <code>ArrayCollection</code>.
+		 * 
+		 * The objects in the collection have the following properties:
+		 * 
+		 *<pre>
+		 *  var edgeData:Object = {
+		 * 		label:String	// this label
+		 * 		fromId:String,	// rfid one
+		 * 		toID:String,	// rfid two
+		 * 		dt:String,		// duration in format hh:mm:ss
+		 * 		count:String	// distinct meeting count
+		 * }
+		 * </pre>
+		 * 
+		 */
+		 public function get edgesAC():ArrayCollection
+		 {
+		 	return _edgesAC;
+		 }
 		
 		private function calcBetweenness():void
 		{
@@ -288,7 +327,6 @@ package classes.datastructures
 			
 			var betweenessCentrality:BetweennessCentrality = new BetweennessCentrality(graph);
 			_nodesBetweenness = betweenessCentrality.betweenenssOfNodes;
-			
 			
 		}
 		

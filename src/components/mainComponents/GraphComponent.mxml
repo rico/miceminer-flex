@@ -961,7 +961,16 @@
 			 	switch(event.target.selectedItem.func)
 			 	{
 			 		case 'exportExcel':
-			 			exportToExcel();
+			 			exportToExcel(false);
+			 		break;
+			 		case 'exportExcelAll':
+			 			exportToExcel(true);
+			 		break;
+			 		case 'exportEdgeDataToExcelAll':
+			 			exportEdgeDataToExcel(true);
+			 		break;
+			 		case 'exportEdgeDataToExcel':
+			 			exportEdgeDataToExcel(false);
 			 		break;
 			 		case 'exportPng':
 			 			exportPng();
@@ -979,24 +988,62 @@
 			 }
 			
 			/**
-			 * Export graph as a png file
+			 * Export node based measures to an xml file.
+			 * 
+			 * @param all If true exports all the data, if false only the node based measures
+			 * for the current component is exported.
 			 */
-			 private function exportToExcel():void
+			 private function exportToExcel(all:Boolean):void
 			 {
 			 	// grid proprties
 			 	var gridId:String = ConfigXML..flex..graph.graphData.grid[0].@id;
 			 	var filename:String = ConfigXML..flex..graph.graphData.grid[0].@filename;
 			 	
 			 	var nodesDG:DataGrid = new DataGrid();
-			 	nodesDG.dataProvider = _nodeBasedMeasures;
 			 	
+			 	if(all) {
+			 		nodesDG.dataProvider = _nodeBasedMeasures;
+			 	} else {
+			 		nodesDG.dataProvider = ArrayCollection(nodes.getParentItem( nodes.selectedItem ).children);
+			 	}
+
 			 	// exporter
 			 	var Export:ExcelExport = new ExcelExport(nodesDG, filename + '_' + _month + '_' + _year, gridId);
 
 			 }
+			 
+			 /**
+			 * Export edge data to an xml file.
+			 * 
+			 * @param all If true exports all the data, if false only the edge data
+			 * for the current component is exported.
+			 */
+			 private function exportEdgeDataToExcel(all:Boolean):void
+			 {
+			 	// grid proprties
+			 	var gridId:String = ConfigXML..flex..graph.graphEdgeDataExport.grid[0].@id;
+			 	var filename:String = ConfigXML..flex..graph.graphEdgeDataExport.grid[0].@filename;
+			 	
+			 	var edgesDG:DataGrid = new DataGrid();
+			 	
+			 	if(all) {
+			 		var allEdgeData:Array = [];
+			 		for each (var gd:GraphData in _graphData) {
+			 			allEdgeData = allEdgeData.concat( gd.edgesAC.source );
+			 		}
+			 		
+			 		edgesDG.dataProvider = new ArrayCollection( allEdgeData );
+			 	} else {
+			 		edgesDG.dataProvider = _selGraphData.edgesAC;
+			 	}
+
+			 	// exporter
+			 	var Export:ExcelExport = new ExcelExport(edgesDG, filename + '_' + _month + '_' + _year, gridId);
+
+			 }
 			
 			/**
-			 * Export graph as a png file
+			 * Export graph as a png file.
 			 */
 			 private function exportPng():void
 			 {
@@ -1013,7 +1060,7 @@
 			 }
 			 
 			 /**
-			 * Export graph to netdraw
+			 * Export all graph data to netdraw.
 			 */
 			 private function exportAllNetdraw():void
 			 {
@@ -1021,7 +1068,7 @@
 			 }
 			 
 			 /**
-			 * Export graph to netdraw
+			 * Export comoponent data to netdraw.
 			 */
 			 private function exportComponentNetdraw():void
 			 {
@@ -1171,6 +1218,7 @@
 				itemRenderer="components.renderers.CustomNodeRenderer"
 				edgeLabelRenderer="classes.renderer.CustomEdgeLabelRenderer"
 				displayEdgeLabels="{_selGraphData.displayEdgeLabels}"
+				filteredEdgesUpdated="updateNodeBasedMeasures()"
 				showHistory="false"
 				edgeRenderer="{new CustomEdgeRenderer(vgraph.edgeDrawGraphics)}"
 				autoLayout="true"
@@ -1320,10 +1368,13 @@
 					<mx:ComboBox id="export_combo" labelField="label" styleName="analysisCombo" height="18" change="export(event)" >
 						<mx:ArrayCollection>
 							<mx:Object label="(please choose an export method)" func="export" />
-							<mx:Object label="Export as Excel file (.xls)" func="exportExcel" />
-							<mx:Object label="Export displayed graph as image (.png)" func="exportPng" />
+							<mx:Object label="Export all node based measures to Excel (.xls)" func="exportExcelAll" />
+							<mx:Object label="Export node based measures of current component to Excel (.xls)" func="exportExcel" />
+							<mx:Object label="Export all edge data to Excel (.xls)" func="exportEdgeDataToExcelAll" />
+							<mx:Object label="Export edge data of current component to Excel (.xls)" func="exportEdgeDataToExcel" />
 							<mx:Object label="Export all components as Netdraw file (.vna)" func="exportNetdrawAll" />
 							<mx:Object label="Export displayed graph as Netdraw file (.vna)" func="exportNetdrawComp" />
+							<mx:Object label="Export shown graph as image (.png)" func="exportPng" />
 						</mx:ArrayCollection>
 					</mx:ComboBox>
 				</mx:HBox>

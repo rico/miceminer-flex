@@ -683,12 +683,6 @@
 			 	var filename:String = ConfigXML..flex..graph.edgeData.grid[0].@filename;
 			 	
 			 	var edgeDataDG:DataGrid = new DataGrid();
-			 	/*var exportData:ArrayCollection = new ArrayCollection(_edgeData.source);
-			 	for each (var data:Object in exportData) {
-			 		if( data.hasOwnProperty('dt_sec') && data.hasOwnProperty('dt') ) {
-			 			data['dt_sec'] = data['dt'];
-			 		}
-			 	}*/
 			 	
 			 	edgeDataDG.dataProvider = _edgeData;
 			 	

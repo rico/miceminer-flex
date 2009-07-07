@@ -15,6 +15,5 @@ package classes
 		 public static const DATA_ANALYSIS:String = "Data Analysis";
 		 public static const GRAPH_DATA:String = "Graph Data";
 		 public static const UPLOAD_FILES:String = "Upload Files";
-		
 	}
 }
