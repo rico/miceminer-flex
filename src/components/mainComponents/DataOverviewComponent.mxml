@@ -183,9 +183,6 @@
 						loadViewActive = false;
 					}
 					
-					this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, this.searchCompTabBuilt);
-					
-					
 							
 				} else {
 					compsToBuild--;

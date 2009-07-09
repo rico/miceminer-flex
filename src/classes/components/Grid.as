@@ -838,16 +838,9 @@ package classes.components
    		 */
    		public function set selectedItem(item:Item):void
    		{
-   			
-   			try {
-   				if(item.gridId == this.id) {
-					_searchGrid.selectedIndex = findObjectById(item.data);
-   					_searchGrid.scrollToIndex(_searchGrid.selectedIndex);
-   				} else {
-   					throw new Error("item.gridId is not the same as this grid id. Item doesn't belong to this grid");
-   				}
-   			} catch(e:Error) {
-   				trace(e.message);
+   			if(item.gridId == this.id) {
+				_searchGrid.selectedIndex = findObjectById(item.data);
+   				_searchGrid.scrollToIndex(_searchGrid.selectedIndex);
    			}
    		}
    		/**
@@ -886,7 +879,7 @@ package classes.components
 		 */ 
 		private function findObjectById(obj:Object):int
 		{
-			var foundObjectIndex:int = -1;
+			var foundObjectIndex:int = 0;
 			var i:uint = 0;
 			while (foundObjectIndex == -1 && i < _dbData.length) {
 				if(_dbData[i].id == obj.id) {

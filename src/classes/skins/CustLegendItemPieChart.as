@@ -1,22 +1,21 @@
 package classes.skins
 {
-	import flash.events.MouseEvent;
-	
 	import mx.charts.LegendItem;
+	import mx.controls.Label;
 	
 	/**
 	 * @private
 	 */
 	public class CustLegendItemPieChart extends LegendItem
 	{    
+		
+		private var _label:Label;
 	    
-	     public function CustLegendItemPieChart()
-	     {
+		public function CustLegendItemPieChart()
+		{
 	         super();
 	         this.styleName = "pieChartLegendItem";
-
-	     }
-	     
+		}
 
 	}
 }

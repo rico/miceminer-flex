@@ -12,7 +12,6 @@
 			import mx.events.FlexEvent;
 			import mx.controls.Image;
 			import classes.datastructures.Item;
-			import components.popUps.NoDataPopUp;
 			import classes.helpers.DbDateValidator;
 			import components.charts.ChartsComponent;
 			import mx.core.Container;
@@ -43,7 +42,6 @@
 	        private var dateFor:String;
 			private var _tabChilds:Boolean = false;  // does the navigators have child comps
 			private var dataInfo:ObjectProxy;
-			private var gridsAdded:int;
 			private var _selectedChildIndex:int;
 			private var _divx:int;
 			private var _hasFocus:Boolean;
@@ -164,7 +162,7 @@
 		        	_selSearchComp.focus();
 			        	
         			//trace("[" + this.name + "]: Tab changed to grid: " + _selSearchComp.name + " has charts: " + _selSearchComp.charts.toString());
-	        	}	
+	        	} 
 	        }
 	        
 			/**
@@ -199,8 +197,6 @@
 	        	return _hasFocus;
 	        }
 	        
-	        
-	    	        
 			/* -----------------------------------------------------------------------------------------------
 			 Build _searchComps
 			----------------------------------------------------------------------------------------------- */
@@ -252,50 +248,20 @@
 				navigatorsComp.selectedIndex = -1;
 				navigatorsComp.invalidateDisplayList();
 				
-				addEventListener(CompBuiltEvent.GRID, searchCompAdded);
-				gridsAdded = 0;
+				var dataAvailable:Boolean = false;
 	        	for each (var sc:Grid in _searchComps) {
 	        		sc.dbData = dbData[sc.id];
 	        		
 	        		// check if we have data to show
 	        		if(sc.dbData.length > 0) {
 	        			navigatorsComp.addChild(sc);
-	        			gridsAdded += 1;
+	        			_tabChilds = true;
 	        		} 
 	        		
 		        }
-		        
-		        // check if we have data
-		        if(gridsAdded == 0) {
-		        	gridsAdded = 1;
-		        	_tabChilds = false;
-	        		navigatorsComp.removeAllChildren();
-		        	dispatchEvent(new CompBuiltEvent(CompBuiltEvent.GRID, this));
-		        	var zeroDataPop:NoDataPopUp = NoDataPopUp(PopUpManager.createPopUp(this, NoDataPopUp, false));
-					zeroDataPop.noDataLabel = "No data for parameters" ;
-	        		
-		        } else {
-					_tabChilds = true;
-		        	changeTabFocus();		        	
-		        }
-		        
 
-		        
-		        //dispatchEvent(new CompBuiltEvent("searchCompTab",this.name));
-		        	//trace("[gridsComp] attached: " + this.id + " selIndex: " + navigatorsComp.selectedIndex.toString());
-		        //this.addEventListener(Event
-	        }
-	        
-	        private function searchCompAdded(event:CompBuiltEvent):void
-	        {
-	        	gridsAdded -= 1;
-	        	if(gridsAdded == 0) {
-	        		removeEventListener(CompBuiltEvent.GRID,searchCompAdded);
-	        		dispatchEvent(new CompBuiltEvent(CompBuiltEvent.GRIDS_NAVIGATOR, this));
-	        		
-	        	}
-	        	
-	        	event.stopImmediatePropagation();
+		      changeTabFocus();
+		      dispatchEvent( new Event("ready") );
 	        }
 	        
 
@@ -371,10 +337,10 @@
 			 */
 			public function set selectedItem(item:Item):void
 			{
+				
 				_selSearchComp.selectedItem = item;
 				_selectedItem = item;
-			
-				enableJumpBut = true;	
+				enableJumpBut = true;
 				
 			}
 			

@@ -847,7 +847,6 @@
 					_loadWin = new LoadPopUp();
 					_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
 					_loadWin.loadLabel = loadLabel;
-					_loadWin.open = true;
 				} 
 				
 				_loadWin.loadLabel = loadLabel;	
@@ -860,7 +859,6 @@
 			private function removeLoadView():void
 			{
 				if(_loadWin.open) {
-					_loadWin.open = false;
 					_loadWin.closeThis();
 				}	
 			} 

@@ -28,7 +28,7 @@
 			 */
 			[Event(name="cancelLoad", type="flash.events.Event")]
 			
-			public var open:Boolean;
+			private var _open:Boolean;
 			private var _cancelBut:LinkButton;
 			
 			/**
@@ -50,6 +50,8 @@
 				this.addEventListener(MouseEvent.MOUSE_OVER, removeBusyCursor);
 				this.addEventListener(MouseEvent.MOUSE_OUT, setBusyCursor);
 				
+				_open = true;
+				
 			}
 			
 			/**
@@ -66,12 +68,14 @@
 			 */
 			private function removeThis(event:EffectEvent):void
 			{
-				open = false;
+				
 				this.removeEventListener(MouseEvent.MOUSE_OVER, removeBusyCursor);
 				this.removeEventListener(MouseEvent.MOUSE_OUT, setBusyCursor);
 				CursorManager.removeBusyCursor();
 				
-				PopUpManager.removePopUp(this);	
+				_open = false;
+				PopUpManager.removePopUp(this);
+					
 			}
 			
 			/**
@@ -123,6 +127,11 @@
 			private function removeBusyCursor(event:MouseEvent):void
 			{
 				CursorManager.removeBusyCursor();
+			}
+			
+			public function get open():Boolean
+			{
+				return _open;
 			}
 		]]>
 	</mx:Script>

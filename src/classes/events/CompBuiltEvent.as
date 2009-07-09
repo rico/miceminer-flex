@@ -11,13 +11,6 @@ package classes.events
         private var _component:*;
         
         /**
-        * Use for <code>GridNavigator</code>.
-        * 
-        * @see components.navigators.GridNavigator
-        */
-        public static const GRIDS_NAVIGATOR:String = "GridsNavigator";
-        
-        /**
         * Use for <code>Grid</code>.
         * 
         * @see components.grids.Grid

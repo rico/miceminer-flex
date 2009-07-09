@@ -11,6 +11,8 @@
 	
 	<mx:Script>
 		<![CDATA[
+			import mx.collections.ArrayCollection;
+			import mx.events.CloseEvent;
 			import components.popUps.InfoPopUp;
 			import classes.rpc.GetItems;
 			import classes.datastructures.Item;
@@ -41,7 +43,6 @@
 			public var componentXML:XML;
 			
 			private var _activeGrid:Grid;
-			private var _loadViewActive:Boolean = false;
 			private var _dataAvailable:Boolean = false;
 			private var _isLoadAll:Boolean = false;
 			private var _labelSetter:ChangeWatcher;
@@ -50,7 +51,7 @@
 			private var _itemGridsXML:XMLList;
 			private var _dataGridsXML:XMLList;
 			private var _item:Item;
-			private var _loadWin:LoadPopUp = new LoadPopUp();
+			private var _loadWin:LoadPopUp;
 			private var _compsToBuild:int = 0;
 			private var Globals:GlobalVars;
 			private var _cachedView:String;
@@ -90,6 +91,7 @@
 			{
 				
 				Globals = GlobalVars.getInstance();
+				_loadWin = new LoadPopUp();
 				
 				// Setting dat ranges (this and child components)
 				// The date range is the last day of the database dat range when crating the component
@@ -126,7 +128,6 @@
             	_itemGridsXML = XmlHelper.getItemsGridsInDateRangeXML();
             	
             	if(Globals.itemsDataInDateRange) {
-            		this.addEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
 					itemsComp.build(_itemGridsXML);
 					itemsComp.attachSearchComps(Globals.itemsDataInDateRange);
 					
@@ -179,7 +180,6 @@
 				}
 				
 				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
-				_compsToBuild = 0;
 				
 				event.stopImmediatePropagation();
 			}
@@ -218,7 +218,6 @@
 				if( !_isLoadAll ) {
 					loadView("loading data for items", false);
 				}
-				_compsToBuild++;
 
 				event.stopPropagation();
 				
@@ -231,7 +230,8 @@
 				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
 				
 				var dbData:Array = event.values[0];
-				itemsComp.build(_itemGridsXML);	
+				itemsComp.build(_itemGridsXML);
+				itemsComp.addEventListener( "ready", itemsCompReady)	
 	        	itemsComp.attachSearchComps(dbData);
 	      		
 			}
@@ -264,8 +264,9 @@
 					Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_COMPLETE,buildDataComp);
 					Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
 					Globs.broker.addEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
-									
+					
 					_getDataDataGrids = new GetData(_item, _dateRange);
+					
 					
 				} else { // export the data directly to excel
 					new ExportData(_item, _dateRange);
@@ -296,16 +297,38 @@
 				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
 				Globs.broker.removeEventListener(EventsGlobals.DATA_LOAD_CANCELED, cancelLoad);
 				
-				_item = event.values[0];
+				dataComp.addEventListener( "ready", dataCompReady );
+				
 				var dbData:Array = event.values[1];
+				if( hasData(dbData) ) {
+					_item = event.values[0];
 				
-				Globals.dataData = dbData;
+					Globals.dataData = dbData;
+					
+					dataComp.build(_dataGridsXML, _item);
+					dataComp.attachSearchComps(dbData);
+					
+					dataAvailable = true;
+				} else {
+					dataComp.dispatchEvent( new Event("ready") );
+					dispatchEvent( new RequestViewEvent(RequestViewEvent.DATA_CLOSED) );
+				}
 				
-				dataComp.build(_dataGridsXML, _item);
-				dataComp.attachSearchComps(dbData);
+			}
+			
+			/**
+			 * Tests if the returned array collections contain data
+			 */
+			private function hasData(arr:Array):Boolean
+			{
+				for each ( var ac:ArrayCollection in arr) {
+					if(ac.length != 0) {
+						return true;
+					}
+				}
 				
-				
-				dataAvailable = true;
+				return false;	
+			
 			}
 			
 			
@@ -319,17 +342,12 @@
 				dataFilterBox.visible = true;
 				gridsCompsBox.alpha = 1;
 				
-				// setting the date range cause we reloading all data
-				//this.dateRange = header.dateSet.dateRange;
-				//Globals.dateRange = this.dateRange;
-				
 				setLabel();
             	Globals.currentItem = event.item;
             	
 				if(dataAvailable) {
 					_isLoadAll = true;
 					loadView("loading data for new date range", true);
-					//_item.toExcel = false;
 					currentState = "splitView";
 					loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
 					loadData( new LoadDataEvent(LoadDataEvent.LOAD_DATA, _item) );
@@ -337,7 +355,6 @@
 				} else {
 					_isLoadAll = false;
 					loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
-					//_compsToBuild++;
 				}
 			} 	
 			
@@ -348,8 +365,8 @@
 			{
 				_compsToBuild = 0;
 				var faultData:FaultEvent = fault.values[0];
-				removeLoadView()
-				this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, this.searchCompTabBuilt);
+				removeLoadView();
+				//this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, this.searchCompTabBuilt);
 				
 				Alert.show(faultData.fault.faultString + "\n Please choose other data parameters", faultData.fault.faultCode.toString(),4,null,null,alertIcon);
 				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
@@ -365,9 +382,9 @@
 			private function changeHeader(event:ChangeHeaderEvent):void
 			{
 				_activeGrid = event.grid;
-				event.stopImmediatePropagation();
 				
-				if(_activeGrid.parentGridsNavigator.id == "itemsComp") {
+				event.stopImmediatePropagation();
+				if(!_activeGrid || _activeGrid.parentGridsNavigator.id == "itemsComp") {
 					if (_dataAvailable) dataComp.hasFocus = false;
 					itemsComp.hasFocus = true;
 				} else if(_activeGrid.parentGridsNavigator.id== "dataComp") {
@@ -392,18 +409,15 @@
 			 */
 			private function loadView(labelValue:String = null, cancelable:Boolean = false):void
 			{
-				if(_loadViewActive) {
+				if(_loadWin.open) {
 					_loadWin.loadLabel = labelValue;	
 				} else {
-					this.addEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
-					
 					_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp,true));
 					_loadWin.addEventListener("cancelLoad", cancelLoad);
 					_loadWin.loadLabel = labelValue;
 					
 					_loadWin.cancelable = cancelable;
 					
-					_loadViewActive = true;
 				}
 			}
 			
@@ -412,45 +426,36 @@
 			 */
 			private function removeLoadView():void
 			{
-				if(_loadViewActive)
-				{
+				if(!itemsComp.hasEventListener("ready") && !dataComp.hasEventListener("ready")) {
 					_loadWin.closeThis();
 					this.removeEventListener("cancelLoad", cancelLoad);
-					_loadViewActive = false;
 				}
 			}
 			
 			
-			// called when the grids finished and attached to the gridsComp
-			private function searchCompTabBuilt(event:CompBuiltEvent):void
+			/**
+			 * Called when itemsComp is ready
+			 */
+			private function itemsCompReady(event:Event):void
 			{
-				if(_compsToBuild <= 1) {
-				 	
-					var selGridsComp:GridsNavigator = event.component as GridsNavigator;
-					selGridsComp.changeTabFocus();
-					
-					_compsToBuild = 0;
-					
-					removeLoadView();
-					
-					this.removeEventListener(CompBuiltEvent.GRIDS_NAVIGATOR, searchCompTabBuilt);
-					
-					if(_isLoadAll) {
-						_isLoadAll = false;
-						dataAvailable ? setView("splitView") : setView("itemsView");
-					}
-					
-					// select _item in the itemsGrid
-					if(_item) {
-						itemsComp.selectedItem = _item;
-					}
-							
-				} else {
-					_compsToBuild--;
-				}
+				itemsComp.removeEventListener( "ready", itemsCompReady);
 				
-				event.stopPropagation();
-
+				// select item in the grid
+				if (_item) {
+					//itemsComp.enableJumpBut = true;
+        			itemsComp.selectedItem = _item;
+    			}
+          		
+				removeLoadView();
+			}
+			
+			/**
+			 * Called when dateComp is ready
+			 */
+			private function dataCompReady(event:Event):void
+			{
+				 dataComp.removeEventListener( "ready", dataCompReady);
+				 removeLoadView();
 			}
 		
 			
@@ -500,7 +505,6 @@
 						setView("itemsView");
 						itemsComp.enableJumpBut = false;
 						dataAvailable = false;
-						changeHeader( new ChangeHeaderEvent( itemsComp.navigatorsComp.selectedChild as Grid ) );
 						
 					break;
 					default:
@@ -508,6 +512,7 @@
 					break;
 				}
 				
+				removeLoadView();
 				event.stopImmediatePropagation();
 				
 			}
