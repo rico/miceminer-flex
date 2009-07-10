@@ -15,8 +15,15 @@ package classes.renderer {
 	import org.un.cava.birdeye.ravis.utils.events.VGraphRendererEvent;
 	
 	/**
+	 * Dispatched when the edge label is double clicked.
+	 * 
+	 * @eventType corg.un.cava.birdeye.ravis.utils.events.VGraphRendererEvent.VG_RENDERER_SELECTED
+	 */
+	[Event(name="vgRendererSelected", type="org.un.cava.birdeye.ravis.utils.events.VGraphRendererEvent")]
+	
+	/**
 	 * Adds some formatting and highlighting functionalities to the edge label rendering of the 
-	 * <b><a href="http://code.google.com/p/birdeye/wiki/RaVis">RaVis</a></b> base renderer. 
+	 * <b><a href="http://code.google.com/p/birdeye/wiki/RaVis">RaVis</a></b> base renderer.
 	 */
 	public class CustomEdgeLabelRenderer extends BaseRenderer {
 		
@@ -74,6 +81,7 @@ package classes.renderer {
 		override protected function initLinkButton():LinkButton {
 			
 			_edgeLabel = new LinkButton();
+			_edgeLabel.doubleClickEnabled = true;
 			
 			_edgeLabel.label = DateHelpers.secToTime(this.data.data.@sec, 'short');
 			_edgeLabel.setStyle("fontFamily", 'MyriadPro');
@@ -84,10 +92,11 @@ package classes.renderer {
 			_edgeLabel.setStyle("selectionColor", 0xff0d00);
 			_edgeLabel.setStyle("rollOverColor",0xff0d00);
 			
+			
 			_edgeLabel.addEventListener(FlexEvent.CREATION_COMPLETE, adjustPosition);
 			_edgeLabel.addEventListener(MouseEvent.MOUSE_OVER, highlightEdge);
 			_edgeLabel.addEventListener(MouseEvent.MOUSE_OUT, normalEdge);
-			_edgeLabel.addEventListener(MouseEvent.CLICK, loadDataforEdge)
+			_edgeLabel.addEventListener(MouseEvent.DOUBLE_CLICK, loadDataforEdge)
 			
 			this.addChild(_edgeLabel);
 			
@@ -152,9 +161,18 @@ package classes.renderer {
 		{
 			this.data.edge.vedge.lineStyle.color = _offLineColor;
 			this.data.vgraph.edgeRenderer.draw(data.edge.vedge);
-			
 			this.data.edge.node1.vnode.view.highlight = false;
 			this.data.edge.node2.vnode.view.highlight = false;
+		}
+		
+		/**
+		 * The edge label button.
+		 * 
+		 * <p>Double click enable by default.</p>
+		 */
+		public function get linkButton():LinkButton
+		{
+			return _edgeLabel;
 		}
 		
 		

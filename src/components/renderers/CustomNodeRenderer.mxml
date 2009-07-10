@@ -192,11 +192,13 @@
 			
 			/**
 			 * Store position when node has moved (dragged)
+			 * 
+			 * <p>The new position is stored in the viewCenter property of the renderer data.</p> 
 			 */
 			private function savePos():void
 			{
-				this.data.data.@x = this.data.x;
-				this.data.data.@y = this.data.y;
+				this.data.data.@x = this.data.viewCenter.x;
+				this.data.data.@y = this.data.viewCenter.y;
 			}
 			
 		]]>

@@ -106,6 +106,7 @@
 		
 	<mx:Script>	
 		<![CDATA[
+			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualNode;
 			import classes.datastructures.GraphData;
 			import org.un.cava.birdeye.ravis.graphLayout.visual.IVisualNode;
 			import org.un.cava.birdeye.ravis.utils.events.VGraphEvent;
@@ -177,6 +178,12 @@
 					layouter.autoFitEnabled = true;
 					layouter.layoutPass();
 				} else {
+					
+					for each (var vn:VisualNode in vgraph.visibleVNodes) {
+						vn.data.@x = vn.x;
+						vn.data.@y = vn.y;
+					}
+					
 					layouter = new DirectPlacementLayouter(vgraph);
 				}
 					
