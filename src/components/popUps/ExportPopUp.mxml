@@ -4,11 +4,13 @@
 	horizontalAlign="center"
 	verticalAlign="middle"
 	horizontalGap="5"
-	initialize="Globs.broker.addEventListener(EventsGlobals.EXPORT_COMPLETE,downloadFile);"
+	initialize="Globs.broker.addEventListener(EventsGlobals.EXPORT_COMPLETE,initiateDownload);"
 	creationComplete="initComp()">
 	
 	<mx:Script>
 		<![CDATA[
+			import mx.core.IFlexDisplayObject;
+			import mx.core.Application;
 			import mx.managers.CursorManager;
 			import mx.events.EffectEvent;
 			import classes.GlobalVars;
@@ -31,10 +33,12 @@
 			[Bindable]
 			[Embed(source="/assets/img/close.png")]
             private var cancelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/ok.png")]
+            private var okIcon:Class;
 			
 			private var _cancelBut:LinkButton;
-			
-			
 			private var _fileRef:FileReference;
 			private var _request:URLRequest;
 			private var _deleteMethod:String;
@@ -55,7 +59,7 @@
 			 */
 			public function set exportLabel(text:String):void
 			{
-				export_bar.label = text;
+				export_bar.label = text + " ...";
 				export_bar.invalidateSize();
 			} 
 			
@@ -63,19 +67,53 @@
 			/**
 			 * @private
 			 * 
-			 * download the file
+			 * initiate file download
 			 */
-			private function downloadFile(event:ObjectDataEvent):void
+			private function initiateDownload(event:ObjectDataEvent):void
 			{
 				
 				_request = new URLRequest(event.values[0]);
 				//_remote_filesize 
 				
-				Globs.broker.removeEventListener(EventsGlobals.EXPORT_COMPLETE,downloadFile);
+				Globs.broker.removeEventListener(EventsGlobals.EXPORT_COMPLETE,initiateDownload);
 				event.stopImmediatePropagation();
 				
 				_fileRef = new FileReference();
+				currentState = "fileReadyState";
+				
+				Application.application.addEventListener(KeyboardEvent.KEY_DOWN, handleKeyDown);
+			}
+			
+			/**
+			 * download by user mouse click
+			 */
+			private function downloadFileByMouseClick(event:MouseEvent):void
+			{
 				_fileRef.download(_request);
+				registerDownloadListeners();
+				currentState = "downloadFileState";
+			}
+			
+			/**
+			 * download / cancel by hitting the enter or esc key
+			 */
+			private function handleKeyDown(event:KeyboardEvent):void
+			{
+				if(event.charCode == Keyboard.ENTER) {
+					_fileRef.download(_request);
+					registerDownloadListeners();
+					currentState = "downloadFileState";
+				} else if (event.charCode == Keyboard.ESCAPE) {
+					cancelBut.dispatchEvent( new MouseEvent(MouseEvent.CLICK) );
+				}
+				
+			}
+			
+			/**
+			 * Register file reference download listeners
+			 */
+			private function registerDownloadListeners():void
+			{
 				_fileRef.addEventListener(Event.CANCEL, downloadHandler);
 				_fileRef.addEventListener(Event.COMPLETE, downloadHandler);
 				_fileRef.addEventListener(Event.OPEN, downloadHandler);
@@ -84,6 +122,7 @@
 				_fileRef.addEventListener(IOErrorEvent.IO_ERROR, downloadHandler);
 				_fileRef.addEventListener(SecurityErrorEvent.SECURITY_ERROR, downloadHandler);
 			}
+			
 			
 			private function downloadHandler(event:Event):void {
 				
@@ -98,7 +137,7 @@
 					break;
 					case 'open':
 					case 'select':
-						exportLabel = 'downloading file ...';
+						//exportLabel = 'downloading file ...';
 					break;
 					case 'ioError':
 					case 'securityError':
@@ -154,6 +193,7 @@
 			 */
 			public function closeThis():void
 			{
+				Application.application.removeEventListener(KeyboardEvent.KEY_DOWN, handleKeyDown);
 				addEventListener(EffectEvent.EFFECT_END, removeThis);
 				showHide.play([this],true);
 			}
@@ -213,14 +253,55 @@
 		]]>
 	</mx:Script>
 	
+	<!-- states -->
+	<mx:states>
+		
+		<mx:State name="fileReadyState">
+			<mx:SetProperty target="{export_bar}" name="includeInLayout" value="false" />
+			<mx:SetProperty target="{export_bar}" name="visible" value="false" />
+			<mx:SetProperty target="{fileReady}" name="includeInLayout" value="true" />
+			<mx:SetProperty target="{fileReady}" name="visible" value="true" />
+		</mx:State>
+		
+		<mx:State name="downloadFileState">
+			<mx:SetProperty target="{export_bar}" name="includeInLayout" value="true" />
+			<mx:SetProperty target="{export_bar}" name="visible" value="true" />
+			<mx:SetProperty target="{export_bar}" name="label" value="downloading file ..." />
+		</mx:State>
+	</mx:states>
+	
+	<!-- effects -->
 	<mx:Parallel id="showHide">
 		<mx:children>
-			<mx:Fade alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Fade id="fadeEff" alphaFrom="0" alphaTo="1" duration="500" />
 			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
 		</mx:children>
 	</mx:Parallel>
 	
 	<mx:ProgressBar id="export_bar" styleName="dataLoaderPB"
-		labelPlacement="bottom" height="20" indeterminate="true"/>	
+		labelPlacement="bottom" height="20" indeterminate="true" remove="{fadeEff.play([export_bar],true)}"/>
+		
+		
+	<mx:VBox id="fileReady" width="100%" height="100%" includeInLayout="false" visible="false"
+		paddingLeft="10"
+		paddingRight="10" 
+		verticalGap="1">
+		<mx:Label styleName="genLabelBright" fontSize="16" fontWeight="bold" text="File ready" />
+		<mx:HRule strokeColor="#FFFFFF" strokeWidth="1" width="100%"/>
+		<mx:Spacer height="5" />
+		<mx:Label styleName="genLabelBright" text="The file is ready to be downloaded." />
+		<mx:Spacer height="10" />
+		<mx:HBox width="100%">
+			<mx:Button id="downloadBut" click="downloadFileByMouseClick(event)"
+				styleName="normButton"  width="100%" fontSize="14" icon="{okIcon}"  
+				label="Download" add="{fadeEff.play([downloadBut])}"/>
+			<mx:Spacer width="100%" />	
+			<mx:Button id="cancelBut" click="cancelLoad(event)"
+				styleName="normButton"  width="100%" fontSize="14" icon="{cancelIcon}"  
+				label="Cancel" add="{fadeEff.play([downloadBut])}"/>					
+		</mx:HBox>
+			
+	</mx:VBox>
+	
 	
 </mx:HBox>

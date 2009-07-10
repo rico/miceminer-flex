@@ -31,12 +31,6 @@
 			private var _open:Boolean;
 			private var _cancelBut:LinkButton;
 			
-			/**
-			 * The text shown as the <code>ProgressBar</code> label.
-			 */
-			[Bindable]
-			public var loadLabel:String;
-			
 			[Bindable]
 			[Embed(source="/assets/img/close.png")]
             private var cancelIcon:Class;
@@ -128,10 +122,28 @@
 			{
 				CursorManager.removeBusyCursor();
 			}
-			
+			/**
+			 * True if popUp is open.
+			 */
 			public function get open():Boolean
 			{
 				return _open;
+			}
+			
+			/**
+			 * The label shown below the progress bar. Three dots will be trailed. 
+			 */
+			public function set loadLabel(value:String):void
+			{
+				prog_bar.label = value + " ...";
+			}
+			
+			/**
+			 * @private
+			 */
+			public function get loadLabel():String
+			{
+				return prog_bar.label;
 			}
 		]]>
 	</mx:Script>
@@ -145,7 +157,7 @@
 	
     
 	<mx:ProgressBar id="prog_bar" styleName="dataLoaderPB" labelPlacement="bottom" 
-		height="20" label="{loadLabel}" indeterminate="true" 
+		height="20" indeterminate="true" 
 		/>
 
 </mx:HBox>

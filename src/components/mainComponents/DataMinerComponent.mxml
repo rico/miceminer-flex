@@ -216,7 +216,7 @@
 				Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
 				
 				if( !_isLoadAll ) {
-					loadView("loading data for items", false);
+					loadView("loading data for overview lists", false);
 				}
 
 				event.stopPropagation();
@@ -255,7 +255,7 @@
 					
 					if(!_isLoadAll) {
 						_activeGrid = itemsComp.navigatorsComp.selectedChild as Grid;
-						loadView("loading data for " + _activeGrid.header + " " + _item.id + "...", true);
+						loadView("loading data for " + _activeGrid.header + " " + _item.id, true);
 					}
 					_compsToBuild++;
 				

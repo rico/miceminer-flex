@@ -160,7 +160,7 @@
 				
 				
 				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
-				_loadWin.loadLabel = "Loading data for rfid " + rfid_combo.selectedLabel + " ...";
+				_loadWin.loadLabel = "Loading data for rfid " + rfid_combo.selectedLabel;
 										
 				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
 				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);

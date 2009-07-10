@@ -165,7 +165,7 @@
 				_to = to_combo.selectedItem.data;
 				
 				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
-				_loadWin.loadLabel = "Loading data ...";
+				_loadWin.loadLabel = "Loading data";
 										
 				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_RESULT,setData);
 				Globs.broker.addEventListener(EventsGlobals.GET_DATA_BY_METHOD_FAULT,loadError);
