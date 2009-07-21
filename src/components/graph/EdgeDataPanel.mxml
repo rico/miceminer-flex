@@ -213,28 +213,19 @@
             			column.sortCompareFunction = numericSort;
             		}
             		
-            		/*if(columnXML.@field == 'dt_sec') {
-            			column.labelFunction = durationLabelFunction;
-            		}*/
-            		
             		if(columnXML.@field == 'typ') {
             			column.showDataTips = true;
             			column.dataTipFunction = showTypeExplanation;
+            		}
+            		
+            		if(columnXML.@field == 'dt_sec') {
+            			column.labelFunction = durationLabelFunction;
             		}
             		
             		columns.push(column)
             	}
             	
             	return columns;
-            	
-            	/*
-            	<mx:AdvancedDataGridColumn dataField="box" headerText="box" />
-					<mx:AdvancedDataGridColumn dataField="dt_sec" headerText="duration (hh:mm:ss)" labelFunction="durationLabelFunction" sortCompareFunction="numericSort"/>
-					<mx:AdvancedDataGridColumn dataField="from" headerText="from" />
-					<mx:AdvancedDataGridColumn dataField="to" headerText="to" />
-					<mx:AdvancedDataGridColumn dataField="typ" headerText="meeting type" sortCompareFunction="numericSort" showDataTips="true" dataTipFunction="showTypeExplanation"/>
-            	*/
-            	
             	
             }
             
@@ -317,7 +308,7 @@
             private function durationLabelFunction(item:Object, column:AdvancedDataGridColumn):String
             {
             	if(item.hasOwnProperty("dt_sec")) {
-            		var formattedSec:String = DateHelpers.secToTime(new Number(item.dt_sec), 'short'); 
+            		var formattedSec:String = DateHelpers.secToTime(new Number(item.dt_sec)); 
             		return formattedSec;
             	}
             	
@@ -359,6 +350,14 @@
 			}
 			
 			/**
+			 * Summary funtion to calculate the average of the meeting duration
+			 */
+			 /* private function dtSecAvg(iterator:IViewCursor, dataField:String, operation:String):Object
+			 {
+			 	
+			 } */
+			
+			/**
 			 * Change the state.
 			 */
 			 private function changeState(event:ItemClickEvent):void
@@ -391,17 +390,17 @@
 
 				 			var boxCountCol:AdvancedDataGridColumn = new AdvancedDataGridColumn();
 				 			boxCountCol.dataField = "data count";
-				 			boxCountCol.headerText = "data count for box";
+				 			boxCountCol.headerText = "meeting count for box";
 				 			boxCountCol.sortCompareFunction = numericSort;
-				 			boxCountCol.width = 100;
+				 			boxCountCol.width = 150;
  							columns.splice(1,0,boxCountCol);
 				 		break;
 				 		case typEdgeDataGC:
 				 			
 				 			var typCountCol:AdvancedDataGridColumn = new AdvancedDataGridColumn();
 				 			typCountCol.dataField = "type count";
-				 			typCountCol.headerText = "data count for typ";
-				 			typCountCol.width = 100;
+				 			typCountCol.headerText = "meeting count for typ";
+				 			typCountCol.width = 150;
 				 			
 				 			// rearranging columns
 				 			var boxColumn:AdvancedDataGridColumn = columns.shift();
@@ -724,7 +723,8 @@
  					<mx:SummaryRow summaryPlacement="group">
              			<mx:fields>
              				<mx:SummaryField dataField="box" label="data count" operation="COUNT"/>
-                 			<mx:SummaryField dataField="dt_sec" operation="AVG"/>
+                 			<mx:SummaryField dataField="dt" label="dt" operation="AVG"/>
+                 			<mx:SummaryField dataField="dt_sec" label="dt_sec" operation="AVG"/>
  						</mx:fields>
    					</mx:SummaryRow>
  				</mx:summaries>

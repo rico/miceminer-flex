@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:HBox xmlns:mx="http://www.adobe.com/2006/mxml"
+	horizontalGap="5" 
+	verticalAlign="middle"
+	creationComplete="build()">
+
+    
+    <mx:Script>
+    	<![CDATA[
+    		
+		    
+		    /**
+			 * Dispatched when the "set" button is clicked.
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="SetFilterValue", type="flash.events.Event")]
+		    
+		    /**
+		    * Creation Complete handler
+		    */
+		    private function build():void
+		    {
+		    	
+		    }
+		    
+		    /**
+		    * The time value to show in this component in seconds.
+		    */
+		    public function set value(seconds:uint):void
+		    {
+		    	
+		    	
+		    	dispatchEvent(new Event("SetFilterValue"));
+		    	
+		    }
+		    
+    	]]>
+    </mx:Script>
+    <mx:HBox
+    	horizontalGap="0" 
+		verticalAlign="middle"
+		height="20" 
+    	cornerRadius="5" backgroundColor="#FFFFFF" 
+    	borderColor="#f92f10" borderThickness="1" borderStyle="solid" >
+    	
+        <mx:TextInput id="countText" height="20"  backgroundAlpha="0" color="{textColor}"
+			textAlign="center" maxChars="2"
+			borderStyle="none" width="23"
+			toolTip="Hours (hh)"
+            focusAlpha="0"/>
+	</mx:HBox>
+	
+	<mx:Button id="setFilterButton" styleName="normButton"
+		height="20"
+		toolTip="Click to set the Filter value"
+		click="{dispatchEvent(new Event('SetFilterValue',true))}"  
+		label="Set" />	
+</mx:HBox>

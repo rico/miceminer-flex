@@ -16,6 +16,7 @@
 	hide="showHide(event)">
 	<mx:Script>
 		<![CDATA[
+			import mx.core.IUIComponent;
 			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
 			import mx.graphics.ImageSnapshot;
 			import components.popUps.InfoPopUp;
@@ -384,8 +385,8 @@
 			private function graphSetup(event:ObjectDataEvent):void {
 				
 				// Getting Data
-				//var fullGraphData:Array = event.values[0];
 				_graphXML  = new XML(event.values[0][0]);
+				
 				Globs.broker.removeEventListener(EventsGlobals.GRAPH_DATA_LOADED, graphSetup);
 
 				/* init a graph object with the XML data */
@@ -1032,7 +1033,27 @@
 			 		
 			 		edgesDG.dataProvider = new ArrayCollection( allEdgeData );
 			 	} else {
-			 		edgesDG.dataProvider = _selGraphData.edgesAC;
+			 		if(vgraph.filteredEdges) {
+			 			 var filteredEdgesAC:ArrayCollection = new ArrayCollection();
+			 			 
+			 			for each ( var edge:XML in vgraph.filteredEdges ) {
+				
+							var duration:String = DateHelpers.secToTime( edge.attribute('sec').toString() ); 
+							filteredEdgesAC.addItem( 
+							{
+								label: label,
+								fromID: edge.attribute('fromID').toString(),
+								toID: edge.attribute('toID').toString(),
+								dt: duration,
+								count: edge.attribute('count').toString() 
+							} );
+				 			
+				 		}
+				 		
+			 			edgesDG.dataProvider = filteredEdgesAC;
+			 		} else {
+			 			edgesDG.dataProvider = _selGraphData.edgesAC;
+			 		}
 			 	}
 
 			 	// exporter
@@ -1047,15 +1068,15 @@
 			 {
 			 	
 			 	var bd:BitmapData = new BitmapData( vgraph.width, vgraph.height );
-			 	var m:Matrix = new Matrix(1,0,0,1,vgraph.offsetX*vgraph.scaleX,vgraph.offsetY*vgraph.scaleY);
-			 	m.scale(vgraph.scaleX, vgraph.scaleY); 
-			 	bd.draw( vgraph, m);
-			 	var ba:ByteArray = new PNGEncoder().encode(bd);
-			 	
-			 	var snapshot:ImageSnapshot = new ImageSnapshot(vgraph.width,vgraph.height,ba, "PNGEncoder");
-			 	
-			 	var exportPng:PngExport = new PngExport( snapshot, 'graph_' + _month.toString() + '_' + _year.toString() + '_' + _selGraphData.graphId );
-			 }
+		         var m:Matrix = new Matrix(1,0,0,1,vgraph.offsetX*vgraph.scale,vgraph.offsetY*vgraph.scale);
+		         m.scale(vgraph.scaleX, vgraph.scaleY); 
+		         bd.draw( vgraph, m);
+		         var ba:ByteArray = new PNGEncoder().encode(bd);
+		         
+		         var snapshot:ImageSnapshot = new ImageSnapshot(vgraph.width,vgraph.height,ba, "PNGEncoder");
+		         
+		         var exportPng:PngExport = new PngExport( snapshot, 'graph_' + _month.toString() + '_' + _year.toString() + '_' + _selGraphData.graphId );
+			}
 			 
 			 /**
 			 * Export all graph data to netdraw.
@@ -1371,7 +1392,7 @@
 							<mx:Object label="Export all edge data to Excel (.xls)" func="exportEdgeDataToExcelAll" />
 							<mx:Object label="Export edge data of current component to Excel (.xls)" func="exportEdgeDataToExcel" />
 							<mx:Object label="Export all components as Netdraw file (.vna)" func="exportNetdrawAll" />
-							<mx:Object label="Export displayed graph as Netdraw file (.vna)" func="exportNetdrawComp" />
+							<mx:Object label="Export current component as Netdraw file (.vna)" func="exportNetdrawComp" />
 							<mx:Object label="Export shown graph as image (.png)" func="exportPng" />
 						</mx:ArrayCollection>
 					</mx:ComboBox>

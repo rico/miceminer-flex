@@ -10,6 +10,7 @@
 	
 	<mx:Script>
 		<![CDATA[
+			import org.un.cava.birdeye.ravis.graphLayout.data.INode;
 			import mx.collections.XMLListCollection;
 			import org.un.cava.birdeye.ravis.components.renderers.nodes.BaseNodeRenderer;
 			import org.un.cava.birdeye.ravis.graphLayout.visual.VisualNode;
@@ -109,17 +110,41 @@
 			 private function egoNetwork(event:MouseEvent):void
 			 {
 			 	if (event.shiftKey) {
+			 		
 			 		this.data.vgraph.egoNetworkView = true;
-			 	 
+			 		var thisNode:INode = INode(this.data.node);
+			 		
 			 		var egoEdges:XMLListCollection = new XMLListCollection();
+			 		var egoNodes:Object = new Object();
+			 		var edgeIds:Object = new Object();
 			 	
+			 		// edge directly connected to this node
 		 			for each (var edge:Edge in this.data.node.inEdges) {
+		 				var otherNode:INode = edge.othernode( thisNode );
+		 				egoNodes[otherNode.stringid] = otherNode;
+		 				edgeIds[ edge.id ] = edge.id;
+		 				
 		 				egoEdges.addItem(edge.data);
+		 				
 			 		}
-				 	
+			 		
+			 		// edges within the neghborhood nodes
+			 		for each (var neighbor:INode in egoNodes) {
+			 			
+			 			for each (var neighborEdge:Edge in neighbor.inEdges) {
+			 				
+			 				var neighborEdgeOtherNode:INode = neighborEdge.othernode( neighbor );
+			 				
+			 				if( egoNodes.hasOwnProperty(neighborEdgeOtherNode.stringid) && !edgeIds.hasOwnProperty(neighborEdge.id) ) {
+			 					egoEdges.addItem(neighborEdge.data);
+			 					edgeIds[ neighborEdge.id ] = neighborEdge.id;
+			 				}
+			 				
+				 		}
+		 				
+			 		}
+			 		
 				 	this.data.vgraph.applyFilter(egoEdges);
-				 	
-				 	
 				 	this.removeEventListener(MouseEvent.CLICK,egoNetwork);
 				 	this.addEventListener(MouseEvent.CLICK, normalNetwork);
 				 }
@@ -132,7 +157,6 @@
 			 {
 			 	if (event.shiftKey) {
 				 	this.data.vgraph.egoNetworkView = false;
-				 	
 				 	this.removeEventListener(MouseEvent.CLICK, normalNetwork);
 				 	this.addEventListener(MouseEvent.CLICK, egoNetwork);
 				 }
