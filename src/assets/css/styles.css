@@ -1641,8 +1641,10 @@ VScrollBar, HScrollBar, .customScrollBar {
 	close-button-up-skin: Embed(source='/assets/img/close_win.png');
 	close-button-over-skin: Embed(source='/assets/img/clear_over.png');
 	close-button-down-skin: Embed(source='/assets/img/clear_over.png');
-	background-alpha: 0.9;
+	background-alpha: 0.95;
 	corner-radius: 6;
+	border-color: #333333;
+	border-alpha: 0.95;	
 	rounded-bottom-corners: false;
 	header-colors: #AFAFAF, #AFAFAF;
 }

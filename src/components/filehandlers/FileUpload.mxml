@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+	<!--
+		© Rico Leuthold [rleuthold@access.ch] // 2009
+		
+		This program is free software: you can redistribute it and/or modify
+	    it under the terms of the GNU General Public License as published by
+	    the Free Software Foundation, either version 3 of the License, or
+	    (at your option) any later version.
+	
+	    This program is distributed in the hope that it will be useful,
+	    but WITHOUT ANY WARRANTY; without even the implied warranty of
+	    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	    GNU General Public License for more details.
+	
+	    You should have received a copy of the GNU General Public License
+	    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	-->
+	
 <mx:VBox xmlns:mx="http://www.adobe.com/2006/mxml"  xmlns:class="classes.components.*" xmlns:grid="components.mainComponents.*"	
 	width="100%" height="100%" creationComplete="build()" 
 	paddingLeft="10" paddingRight="5" paddingTop="5" paddingBottom="5" backgroundColor="#FFFFFF"
@@ -172,16 +190,14 @@
 					for each (var fileRef:FileReference in _refAddFiles.fileList) {
 						
 						if(fileCursor.findFirst(fileRef)) {
-							//trace("found dup: " + fileRef.name);
 							arrFoundList.push(fileRef.name);
-							
 						} else {
 							
 							try {
 								_arrUploadFiles.addItem({
-								name:fileRef.name,
-								size:formatFileSize(fileRef.size),
-								file:fileRef
+									name:fileRef.name,
+									size:formatFileSize(fileRef.size),
+									file:fileRef
 								});
 							} catch(err:IOError) {
 							_errorFileRefXMLList += new XML("<info file=\"" + fileRef.name + "\"><status>0</status><file>" + fileRef.name + "</file><text>The file " + fileRef.name + " seems to be damaged or empty and can't be uploaded.</text></info>")
@@ -241,6 +257,7 @@
 				}
 				
 				_errorFileRefXMLList = new XMLList();
+				_numUploads = _resultGrid.dbData.length;
 				
 				updateProgBar();
 				scrollFiles();

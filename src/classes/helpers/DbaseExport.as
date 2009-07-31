@@ -60,7 +60,6 @@ package classes.helpers
 		   	var dbToken:AsyncToken = dbMethod.send(rfid, from_date, to_date);
 		   	
 		   	_exportWin = ExportPopUp(PopUpManager.createPopUp(Application.application.navigators, ExportPopUp, true));
-			_exportWin.cancelable = true;
 			_exportWin.exportLabel = "Exporting Data for rfid " + rfid +  " as dbase File";
 		   		
 			dbToken.addResponder(new AsyncResponder(DataHandler, faultHandler));
