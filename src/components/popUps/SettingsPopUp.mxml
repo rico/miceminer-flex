@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+	<!--
+		© Rico Leuthold [rleuthold@access.ch] // 2009
+		
+		This program is free software: you can redistribute it and/or modify
+	    it under the terms of the GNU General Public License as published by
+	    the Free Software Foundation, either version 3 of the License, or
+	    (at your option) any later version.
+	
+	    This program is distributed in the hope that it will be useful,
+	    but WITHOUT ANY WARRANTY; without even the implied warranty of
+	    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	    GNU General Public License for more details.
+	
+	    You should have received a copy of the GNU General Public License
+	    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+	-->
+	
+<mx:TitleWindow xmlns:mx="http://www.adobe.com/2006/mxml" 
+	layout="vertical" title="Settings" creationComplete="build()">
+	
+	<mx:Script>
+		<![CDATA[
+			import mx.controls.Alert;
+			import mx.events.EffectEvent;
+			import classes.GlobalVars;
+			import mx.collections.ArrayCollection;
+			import mx.managers.PopUpManager;
+			
+			[Bindable]
+			[Embed(source="/assets/img/close.png")]
+            private var cancelIcon:Class;
+            
+            [Bindable]
+			[Embed(source="/assets/img/ok.png")]
+            private var okIcon:Class;
+            
+            [Bindable]
+            private var _startupComponents:ArrayCollection;
+			
+			private function build():void
+			{
+				_startupComponents = new ArrayCollection();
+				PopUpManager.centerPopUp(this);
+				showHide.play([this]);
+				
+			}
+			
+			/**
+			 * @private
+			 */
+			public function set startupComponents(ac:ArrayCollection):void
+			{
+				componentsList.dataProvider = ac;
+			}
+			
+			/**
+			 * Save the settings
+			 */
+			private function saveSettings():void
+			{
+				
+				var toSave:Object = new Object();
+				
+				for each ( var component:Object in ArrayCollection(componentsList.dataProvider) ) {
+					if(component.startup) {
+						toSave[component.id] = component.id;		
+					}
+				}
+				
+				var settings:SharedObject = SharedObject.getLocal("miceminer");
+				settings.data.miceminer = toSave;
+				
+				try {
+					
+					settings.flush()
+				} catch(err:Error){
+					Alert.show("Save settings failed: " + err.message, "Save failed");
+				}
+				
+				closeThis()
+			}
+			
+			
+			/**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				
+				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showHide.play([this],true);
+			}
+			
+			/**
+			 * Remove the popup without playing the effect.
+			 */
+			private function removeThis(event:EffectEvent):void
+			{
+				PopUpManager.removePopUp(this);	
+			}
+			
+		]]>
+	</mx:Script>
+	
+	<!-- effects -->
+	<mx:Parallel id="showHide">
+		<mx:children>
+			<mx:Fade id="fadeEff" alphaFrom="0" alphaTo="1" duration="500" />
+			<mx:Zoom zoomWidthFrom="0" zoomWidthTo="1" zoomHeightFrom="0" zoomHeightTo="1" duration="500" /> 		
+		</mx:children>
+	</mx:Parallel>
+	
+	<mx:VBox id="settingsBox" styleName="dateRangerCont" width="250" verticalGap="0">
+		<mx:Text width="100%" fontSize="16" color="#333333" text="Checked components will be started once the application is ready. " styleName="genLabelDark"/>
+		<mx:HRule styleName="darkRule" width="100%" />
+		<mx:Spacer height="10" />
+		
+			<mx:List id="componentsList" styleName="settingsList" maxHeight="{settingsBox.height}" rowCount="{ArrayCollection(componentsList.dataProvider).length}">
+			<mx:itemRenderer>
+                <mx:Component>
+                    <mx:CheckBox selectedField="startup" themeColor="#2a61ab"
+                            change="onChange(event);">
+                        <mx:Script>
+                            <![CDATA[
+                                private function onChange(evt:Event):void {
+                                    data.startup = !data.startup;
+                                }
+                            ]]>
+                        </mx:Script>
+                    </mx:CheckBox>
+                </mx:Component>
+            </mx:itemRenderer>
+        </mx:List>	
+	</mx:VBox>
+	
+	<mx:HBox width="100%">
+		<mx:Button styleName="normButton" id="cancelBut" label="cancel" icon="{cancelIcon}" click="closeThis()"/>
+		<mx:Spacer width="100%"/>
+		<mx:Button styleName="normButton" id="saveBut" label="save" icon="{okIcon}" click="saveSettings()"/>
+	</mx:HBox>	
+		
+		
+</mx:TitleWindow>

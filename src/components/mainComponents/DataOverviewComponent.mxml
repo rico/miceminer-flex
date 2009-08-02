@@ -55,11 +55,10 @@
 	        public var componentXML:XML;
 	        
 			private var _activeGrid:Grid;
-			private var loadViewActive:Boolean = false;
-			private var itemGridsXML:XMLList;
+			private var _loadViewActive:Boolean = false;
+			private var _itemGridsXML:XMLList;
 			private var _currentItemInfo:Item;
-			private var loadWin:LoadPopUp = new LoadPopUp();
-			private var compsToBuild:int = 0;
+			private var _loadWin:LoadPopUp = new LoadPopUp();
 			private var Globals:GlobalVars;
 			
 			[Bindable]
@@ -85,17 +84,11 @@
 				this.addEventListener("changeHeader",changeHeader);
 
 				// getting xml for the the grids           	
-            	itemGridsXML = XmlHelper.getItemsGrids();
+            	_itemGridsXML = XmlHelper.getItemsGrids();
             	
-            	if(Globals.itemsData) {
-            		this.addEventListener("GridsNavigator", this.searchCompTabBuilt);
-					itemsComp.build(itemGridsXML);
-					itemsComp.attachSearchComps(Globals.itemsData);
-					
-				} else {
-					// Loading items data
-            		loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
-				}
+            	
+				// Loading items data
+        		loadItems( new LoadItemsEvent(LoadItemsEvent.LOAD_ITEMS) );
 
 		
 				itemsComp.percentHeight = 100;
@@ -120,7 +113,7 @@
 				
 				Globs.broker.addEventListener(EventsGlobals.ITEMS_LOAD_COMPLETE,buildItemsComp);
 				Globs.broker.addEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
-				loadView("loading data for overview");
+				loadView("loading overview data");
 				
 				event.stopPropagation();
 				
@@ -132,7 +125,8 @@
 				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
 				
 				var dbData:Array = event.values[0];
-				itemsComp.build(itemGridsXML);
+				itemsComp.build(_itemGridsXML);
+				itemsComp.addEventListener( "ready", itemsCompReady)
 				itemsComp.attachSearchComps(dbData);
 			}
 			
@@ -142,14 +136,12 @@
 			 */
 			private function showError(fault:ObjectDataEvent):void
 			{
-				compsToBuild = 0;
 				var faultData:FaultEvent = fault.values[0];
-				loadWin.closeThis();
-				loadViewActive = false;
-				this.removeEventListener("GridsNavigator", this.searchCompTabBuilt);
+				_loadWin.closeThis();
 				
 				Alert.show(faultData.fault.faultString + "\n Please choose other data parameters", faultData.fault.faultCode.toString(),4,null,null,alertIcon);
 				Globs.broker.removeEventListener(EventsGlobals.LOAD_ERROR_OCCURED,showError);
+				Globs.broker.removeEventListener(EventsGlobals.ITEMS_LOAD_COMPLETE,buildItemsComp);
 			}
 			 
 			/**
@@ -175,40 +167,20 @@
 			// with the event we get the data needed to load the data
 			private function loadView(labelValue:String = null):void
 			{
-				if(loadViewActive) {
-					loadWin.loadLabel = labelValue;	
-				} else {
-					this.addEventListener("GridsNavigator", this.searchCompTabBuilt);
-					loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
-					loadWin.loadLabel = labelValue;
-					loadViewActive = true;
-				}
+				_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
+				_loadWin.loadLabel = labelValue;
 			}
 			
-			
-			// called when the grids finished and attached to the gridsComp
-			private function searchCompTabBuilt(event:CompBuiltEvent):void
+			/**
+			 * Called when itemsComp is ready
+			 */
+			private function itemsCompReady(event:Event):void
 			{
-				if(compsToBuild <= 1) {
-				 	
-					var selGridsComp:GridsNavigator = event.component as GridsNavigator;
-					selGridsComp.changeTabFocus();
-					
-					compsToBuild = 0;
-					
-					if(loadViewActive) {
-						loadWin.closeThis();
-						loadViewActive = false;
-					}
-					
-							
-				} else {
-					compsToBuild--;
-				}
-				
-				event.stopPropagation();
-
+				itemsComp.removeEventListener( "ready", itemsCompReady);
+				_loadWin.closeThis();
 			}
+			
+			
 			
 			/**
 			 * Show information for component functionality and handling

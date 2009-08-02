@@ -353,10 +353,18 @@ package classes.helpers
 		 * Get the xml configuration for a component out of the xml-configuration file.
 		 * <p>The component cofigurations are found in the path <code>config.flex.components</code>
 		 */
-		public static function getComponentXML(componentName:String):XML
+		public static function getComponentXML(id:String):XML
 		{
-			var compXML:XML = XML(GlobalVars.getInstance().ConfigXML).flex.components.component.(@name == componentName)[0];
-			return compXML;
+			return XML(GlobalVars.getInstance().ConfigXML).flex.components.component.(@id == id)[0];
+		}
+		
+		/**
+		 * Get the label (name attribute) for a component out of the xml-configuration file.
+		 * <p>The component cofigurations are found in the path <code>config.flex.components</code>
+		 */
+		public static function getComponentLabel(id:String):String
+		{
+			return GlobalVars.getInstance().ConfigXML.flex.components.component.(@id == id).@name;
 		}
 	}
 }

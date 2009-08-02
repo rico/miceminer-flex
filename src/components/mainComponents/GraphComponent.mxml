@@ -482,14 +482,11 @@
 			 */
 			private function changeGraph(graphData:GraphData):void
 			{
-				
-				// getting the selected graphData
+				manFilter.value = graphData.filterValue;
 				restoreNormalEdge( new CloseEvent(CloseEvent.CLOSE));
 				
 				_selGraphData = graphData;
-				manFilter.value = _selGraphData.filterValue;
 				_selGraphData.edges.filterFunction = manualFilter;
-				
 				
 				var rootNodeStringId:String;
 				
@@ -504,7 +501,8 @@
 				layoutCtrl.run = _selGraphData.layouterRunning;
 				setTimeInputValues();
 				filterData();
-				updateTimeInput();	 	
+				updateTimeInput();
+				
 			}
 			
 			/**
@@ -645,7 +643,6 @@
 						{
 							if(graphData.graphId == itemToSelect.graphId)
 							{
-								/* trace("change graph from " + _selGraphData.graphId + " to " + graphData.graphId); */
 								changeGraph(graphData);
 								break;
 							}
@@ -1182,9 +1179,6 @@
 			 	_edgeData = new ArrayCollection(edgeData);
 			 	Globs.broker.removeEventListener(EventsGlobals.EDGE_DATA_LOADED, showEdgeDetails);
 
-			 	//var binnedData:ArrayCollection = binData(edgeData, 'dt_sec', 50);
-			 	//trace('binned');
-			 	
 			 	openEdgeDataPanel();
 			 		
 			 }

@@ -1740,3 +1740,15 @@ VScrollBar, HScrollBar, .customScrollBar {
 	font-weight: normal;
 	fontSize: 11;
 }
+
+.settingsList {
+	font-size: 14;
+	fontFamily: 'MyriadPro';
+	color: #333333;
+	text-roll-over-color: #2a61ab;
+	icon-color: #2a61ab;
+	text-selected-color: #2a61ab;
+	roll-over-color: #ffffff;
+	selection-color: #ffffff;
+	border-style:none;
+}
