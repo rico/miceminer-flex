@@ -609,6 +609,8 @@ package classes.components
 			} else if(_name){
 				_filterInformation.unshift({comboLabel: "choose a column to filter the data in " + _name, sort:''});
 			}
+			
+			activeFilter = _filterInformation[0];
 		}
 		
 		/**

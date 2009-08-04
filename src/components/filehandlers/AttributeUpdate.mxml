@@ -31,6 +31,7 @@
 
 	<mx:Script>
 		<![CDATA[
+			import mx.managers.CursorManager;
 			import classes.helpers.DateHelpers;
 			import classes.helpers.CgiRequest;
 			import components.popUps.LoadWithProgressPopUp;
@@ -94,7 +95,6 @@
 			private var _refUploadFile:FileReference;
 			private var _confXML:XML;
 			private var _docTypeFilter:FileFilter;
-			private var _resultGrid:Grid;
 			private var _loadWin:LoadPopUp;
 			private var _progressLoadWin:LoadWithProgressPopUp;
 			private var _table:String;
@@ -109,6 +109,8 @@
 			private var ConfigXML:XML;
 			private var _feedback:XMLList;
 			
+			[Bindable]
+			private var _resultGrid:Grid;
 			
 			[Bindable]
 			private var _updated:Boolean;
@@ -205,9 +207,6 @@
 				var script:String = _confXML.@script;
 				_strUploadUrl = domain.concat(script);
 				
-				 
-				_updateDayCountsScript = 
-				
 				 _confXML = XmlHelper.getFileManagerXML(fileManagerId);
 	
 				//showAlert("nupload URL: " + _strUploadUrl);
@@ -216,11 +215,12 @@
 			/**
 			 * Get the data.
 			 */
-			private function getData():void
+			private function getData(background:Boolean = false):void
 			{
-				
-				_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
-				_loadWin.loadLabel = "Getting Data";
+				if(!_loadWin.open && !background) {
+					_loadWin = LoadPopUp(PopUpManager.createPopUp(this, LoadPopUp, true, "popup"));
+					_loadWin.loadLabel = "Getting Data";
+				}
 				
 				var getDataSql:String = "SELECT " + _fieldList + " FROM " + _table;
 				Globs.broker.addEventListener(EventsGlobals.GENERIC_DATA_LOADED,setData);
@@ -415,21 +415,18 @@
 				
 				removeListeners();
 				
-				if(_loadWin != null) {
+				if(_loadWin.open) {
             		_loadWin.closeThis();	
             	}
-            	
             	choosenFile.text = 'no file choosen';
-            	
             	_updated = true;
-				getData();
+            	getData(true);
 				
 				var feedbackXML:XML = new XML(event.data);
 				_feedback = new XMLList( feedbackXML.* );
 				
 				// check for errors
-				if( _feedback.length() > 0 ) 
-				{
+				if( _feedback.length() > 0 ) {
 
 					var feedbackPopup:AttributeUpdateResPopUp = new AttributeUpdateResPopUp();
 					feedbackPopup = AttributeUpdateResPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, AttributeUpdateResPopUp, true));
@@ -437,7 +434,7 @@
 					_feedback = new XMLList(); // clear feedback xml
 				}
 			}
-
+			
 			/*
 				ERRORS
 			*/	
@@ -543,7 +540,6 @@
 						"Please do not close the browser window while this operation is running!";
 				_progressLoadWin.completedLabel = "All the data for the item " + _idToDelete + " have been deleted,\n " + 
 						"and the references have been updated successfully."
-				//_progressLoadWin.estimated = Number(_daysToUpdate.length * 42);
 				updateDay(_daysToUpdate);
 			}
 			
@@ -581,7 +577,18 @@
 			{
 				var dayInfo:XML = new XML(event.values[0]);
 				Globs.broker.removeEventListener(EventsGlobals.CGI_REQUEST_COMPLETE, dayUpdated)
-				updateDay(_daysToUpdate);
+				
+				if( dayInfo.hasOwnProperty("error") ) {
+					Alert.show( "Update script " + _updateDayCountsScript + " failed.\n " + 
+							"Please contact the system administrator to execute the script manually on the server:\n" + 
+							"'counter.pl --all'\n", "Day update failed");
+					
+					_progressLoadWin.closeThis();
+					reloadData( new Event(Event.CLOSE) );
+				} else {
+
+					updateDay(_daysToUpdate);
+				}
 			}
 						
 		]]>
@@ -607,7 +614,7 @@
 		<mx:HRule styleName="legendSeparator" includeInLayout="{!_updated}" visible="{!_updated}" width="100%"/>
 		<mx:HBox id="filter" width="100%" styleName="controlPartHeader" includeInLayout="{!_updated}" visible="{!_updated}">
 			<mx:Label styleName="genLabelBright" id="filter_label" text="Filter:"/>
-			<class:DataFilterBox id="filter_box" comboBoxStyleName="analysisCombo" textInputStyleName="analysisClearTextInput"
+			<class:DataFilterBox id="filter_box" comboBoxStyleName="analysisCombo" textInputStyleName="analysisClearTextInput" 
 	 		 	height="25" width="100%"/>	
 		</mx:HBox>
 	</mx:VBox>

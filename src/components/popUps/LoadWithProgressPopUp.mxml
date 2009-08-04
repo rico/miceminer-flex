@@ -34,6 +34,7 @@
 	
 	<mx:Script>
 		<![CDATA[
+			import mx.managers.CursorManagerPriority;
 			import classes.helpers.DateHelpers;
 			import mx.events.EffectEvent;
 			import mx.managers.CursorManager;
@@ -75,13 +76,14 @@
 			private var _estimated:Number;
 			
 			private var _estimatedTimer:Timer;
+			private var _busyCursorId:int = 0;
+			
 			
 			private function initComp():void
 			{
 				PopUpManager.centerPopUp(this);
 				showHide.play([this]);
 				progBar.invalidateSize();
-				
 			}
 			
 			/**
@@ -90,6 +92,7 @@
 			public function closeThis():void
 			{
 				addEventListener(EffectEvent.EFFECT_END, removeThis);
+				showBusyCursor = false;
 				showHide.play([this],true);
 			}
 			
@@ -98,24 +101,23 @@
 			 */
 			private function removeThis(event:EffectEvent):void
 			{
-				this.removeEventListener(MouseEvent.MOUSE_OVER, removeBusyCursor);
-				this.removeEventListener(MouseEvent.MOUSE_OUT, setBusyCursor);
-				CursorManager.removeBusyCursor();
-				
 				PopUpManager.removePopUp(this);
 				dispatchEvent(new Event(Event.CLOSE));	
 			}
+			
+			/**
+			 * Handles the busy Cursor
+			 */
+			private function set showBusyCursor(enable:Boolean):void
+			{
+				if(enable && _busyCursorId == 0) {
+					_busyCursorId=CursorManager.setCursor(StyleManager.getStyleDeclaration("CursorManager").getStyle("busyCursor"),CursorManagerPriority.HIGH);
+				} else if(!enable && _busyCursorId != 0) {
+					CursorManager.removeCursor(_busyCursorId);
+					_busyCursorId = 0; 
+				}
+			}
 
-			private function setBusyCursor():void
-			{
-				CursorManager.setBusyCursor();
-			}
-			
-			
-			private function removeBusyCursor():void
-			{
-				CursorManager.removeBusyCursor();
-			}
 			/**
 			 * Set the progress of the action. The value for the <code>totalActions</code> have to be set
 			 * when crating te component. 
@@ -123,15 +125,14 @@
 			public function set progress(value:Number):void
 			{
 				if(value == totalActions) {
+					showBusyCursor = false;
 					if(_estimatedTimer) _estimatedTimer.dispatchEvent(new TimerEvent(TimerEvent.TIMER_COMPLETE));
 					removeChild(progBar);
-					removeBusyCursor();
 					loadText.text = completedLabel;
 					closeBut.includeInLayout = true;
 					closeBut.visible = true;
-					
 				} else {
-					setBusyCursor();
+					showBusyCursor = true;
 					progBar.setProgress(value,totalActions);
 					progBar.label= "Current Progress" + " " + Number((value*100)/totalActions).toFixed(1) + "%";	
 				}

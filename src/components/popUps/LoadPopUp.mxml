@@ -46,6 +46,7 @@
 			 */
 			[Event(name="cancelLoad", type="flash.events.Event")]
 			
+			
 			private var _open:Boolean;
 			private var _cancelBut:LinkButton;
 			
@@ -87,6 +88,7 @@
 				
 				_open = false;
 				PopUpManager.removePopUp(this);
+				
 					
 			}
 			

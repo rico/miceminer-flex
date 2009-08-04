@@ -257,7 +257,6 @@
 				}
 				
 				_errorFileRefXMLList = new XMLList();
-				_numUploads = _resultGrid.dbData.length;
 				
 				updateProgBar();
 				scrollFiles();
@@ -465,7 +464,7 @@
 	<mx:VBox width="100%" styleName="controlHeader" id="header" verticalAlign="middle">
 		<mx:HBox width="100%" verticalAlign="middle" styleName="controlPartHeader">
 				<mx:Button id="btnAdd" toolTip="Add File(s)" label="Add File(s)" click="addFiles()" icon="@Embed('/assets/img/add.png')" styleName="headerButton"/>
-				<mx:Button id="btnRemove" toolTip="Remove File(s)" label="Remove File(s)" click="removeFiles(_resultGrid.searchGrid.selectedIndices)" icon="@Embed('/assets/img/delete.png')" styleName="headerButton"/>
+				<mx:Button id="btnRemove" toolTip="Remove File(s)" label="Remove File(s)" click="{removeFiles(_resultGrid.searchGrid.selectedIndices); _numUploads = _resultGrid.dbData.length}" icon="@Embed('/assets/img/delete.png')" styleName="headerButton"/>
 				<mx:ProgressBar id="progBar" mode="manual" labelPlacement="center" width="100%" styleName="uploadDataPB" />
 				<mx:Button label="Upload File(s)" toolTip="Upload File(s)" id="btnUpload" click="startUpload()" icon="@Embed('/assets/img/fileUpIcon.png')" styleName="reloadButton"/>
 	 		 	<mx:Image source="{helpIcon}" visible="true"

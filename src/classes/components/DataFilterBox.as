@@ -160,15 +160,37 @@ package classes.components
 			_activeSearchComp = activeSearchComp;
 			_searchComboBox.dataProvider = _activeSearchComp.filterInformation;
 			
-			if(!_activeSearchComp.activeFilter) {
-				_searchComboBox.selectedIndex = 0;
-				_activeSearchComp.activeFilter = _activeSearchComp.filterInformation[0];
-			} else {
-				_searchComboBox.selectedItem = _activeSearchComp.activeFilter; 
-			}
+			try{
+				if(!_activeSearchComp.activeFilter) {
+					throw new Error("activeFilter must not be null");
+					
+				}
+				_searchComboBox.selectedItem = searchActiveFilter(_activeSearchComp.activeFilter, _activeSearchComp.filterInformation);
+			} catch (err:Error){
+				trace( err.message );
+				
+			} 
 			
 			setFilter();
 			
+		}
+		
+		/**
+		 * Get the active filter object.
+		 */
+		private function searchActiveFilter(selectedFilter:Object, filterInformation:Array):Object
+		{
+			if(!selectedFilter) {
+				return filterInformation[0];
+			}
+			
+			for each (var filterInfo:Object in filterInformation) {
+				if(filterInfo.id == selectedFilter.id) {
+					return filterInfo;
+				}
+			}
+			
+			return filterInformation[0];
 		}
 		
 		/**

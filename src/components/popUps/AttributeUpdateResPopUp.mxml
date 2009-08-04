@@ -25,6 +25,13 @@
 		
 			import mx.managers.PopUpManager;
 			
+			/**
+			 * Dispatched when the popup will be removed
+			 * 
+			 * @eventType flash.events.Event
+			 */
+			[Event(name="close", type="flash.events.Event")]
+			
 			[Bindable]
 			[Embed(source="/assets/img/clear.png")]
 			private var _close:Class;
@@ -122,6 +129,16 @@
 	        	}	
             }
             
+            /**
+			 * Close this popUp.
+			 */
+			public function closeThis():void
+			{
+				parentApplication.alpha = 1;
+				dispatchEvent( new Event("close") );
+				PopUpManager.removePopUp(this);
+			}
+            
             
 		]]>
 	</mx:Script>
@@ -142,7 +159,7 @@
 			<mx:HBox width="100%">
 				<mx:Spacer width="100%" />
 				<mx:Button label="close" toolTip="close window" styleName="headerButton" id="closeBut" icon="{_close}"
-					height="22" click="PopUpManager.removePopUp(this); parentApplication.alpha = 1;"/>	
+					height="22" click="closeThis()"/>	
 			</mx:HBox>
 		</mx:VBox>
 </mx:TitleWindow>
