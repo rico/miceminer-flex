@@ -34,6 +34,7 @@
 	hide="showHide(event)">
 	<mx:Script>
 		<![CDATA[
+			import classes.helpers.PajekExport;
 			import mx.core.IUIComponent;
 			import org.un.cava.birdeye.ravis.graphLayout.layout.DirectPlacementLayouter;
 			import mx.graphics.ImageSnapshot;
@@ -384,7 +385,7 @@
 						_rootNode.selected = true;
 						_selGraphData.rootNode = vnode;
 						selectRootNodeInGrid();
-						centerGraphByRootNode();
+						//centerGraphByRootNode();
 						
 					}
 					
@@ -502,6 +503,7 @@
 				setTimeInputValues();
 				filterData();
 				updateTimeInput();
+				centerGraph();
 				
 			}
 			
@@ -709,6 +711,7 @@
 					vgraph.scroll((gCenter - nodeCenter) / vgraph.scale, 0);
 				}
 			}
+			
 			/* -----------------------------------------------
 				FILTERING GRAPH
 			----------------------------------------------- */
@@ -980,6 +983,9 @@
 			 		case 'exportExcelAll':
 			 			exportToExcel(true);
 			 		break;
+			 		case 'exportPajekAll':
+			 			exportToPajek();
+			 		break;
 			 		case 'exportEdgeDataToExcelAll':
 			 			exportEdgeDataToExcel(true);
 			 		break;
@@ -1120,6 +1126,15 @@
 			 }
 			 
 			 /**
+			 * Export all graph data to netdraw.
+			 */
+			 private function exportToPajek():void
+			 {
+			 	
+			 	var exportPajek:PajekExport = new PajekExport( _graphXML, _year.toString(), _month.toString() );
+			 }
+			 
+			 /**
 			 * 
 			 * On shift cklick, copy clicked cell value to te clipboard
 			 */
@@ -1228,7 +1243,7 @@
 	<!-- <mx:Style source="styles.css"/> -->
 	
 	<!-- Effects -->
-	<mx:Resize id="resizeBox" duration="500" effectEnd="{ centerGraphByRootNode() ; vgraph.redrawEdges() } "/>
+	<mx:Resize id="resizeBox" duration="500" effectEnd="{ vgraph.redrawEdges() } "/>
 	<mx:Fade id="fadeIn" alphaFrom="0" alphaTo="1" duration="500" />
 	<mx:Fade id="fadeOut" alphaFrom="1" alphaTo="0" duration="500" />
 	
@@ -1399,6 +1414,7 @@
 					<mx:ComboBox id="export_combo" labelField="label" rowCount="8" styleName="analysisCombo" height="18" change="export(event)" >
 						<mx:ArrayCollection>
 							<mx:Object label="(please choose an export method)" func="export" />
+							<mx:Object label="Export network data as Pajek project file (.paj)" func="exportPajekAll" />
 							<mx:Object label="Export all node based measures to Excel (.xls)" func="exportExcelAll" />
 							<mx:Object label="Export node based measures of current component to Excel (.xls)" func="exportExcel" />
 							<mx:Object label="Export all edge data to Excel (.xls)" func="exportEdgeDataToExcelAll" />

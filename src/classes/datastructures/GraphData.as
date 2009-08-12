@@ -206,8 +206,8 @@ package classes.datastructures
 			}
 			
 			// Filter values
-			filterMinimum = 10000;
-			filterMaximum = 0;
+			filterMinimum = Number.MAX_VALUE;
+			filterMaximum = Number.MIN_VALUE;
 			
 			// edges values
 			_edgesAC = new ArrayCollection();
