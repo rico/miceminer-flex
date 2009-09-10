@@ -166,6 +166,9 @@
 			private var initDone:Boolean = false;
 			// the attribute of the xml for the manual filtering
 			private var _manualFilterProperty:String = "sec";
+			// load view is active or not
+			private var _loadView:Boolean;
+			
 			
 			/**
 			 * The <code>GraphData</code> object which is active
@@ -862,12 +865,13 @@
 			 */ 
 			private function loadView(loadLabel:String):void
 			{
+				
 				if(_loadWin == null || !_loadWin.open) {
 					_loadWin = new LoadPopUp();
 					_loadWin = LoadPopUp(PopUpManager.createPopUp(Application.application.navigators as DisplayObject, LoadPopUp, true, "popup"));
 					_loadWin.loadLabel = loadLabel;
 				} 
-				
+				_loadView = true;
 				_loadWin.loadLabel = loadLabel;	
 			}
 			
@@ -877,9 +881,10 @@
 			 */
 			private function removeLoadView():void
 			{
-				if(_loadWin.open) {
+				if( _loadView) {
 					_loadWin.closeThis();
-				}	
+					_loadView = false;
+				}
 			} 
 			
 			/**

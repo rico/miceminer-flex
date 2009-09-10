@@ -45,7 +45,7 @@
 			private var _bgColor:Number;
 			
 			[Bindable]
-			public var _labelText:String;
+			private var _labelText:String;
 			
 			
 			public function init():void
