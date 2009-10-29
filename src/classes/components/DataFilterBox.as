@@ -27,6 +27,7 @@ package classes.components
 	import mx.containers.HBox;
 	import mx.controls.CheckBox;
 	import mx.controls.ComboBox;
+	import mx.events.CollectionEvent;
 	import mx.events.ListEvent;
 	import mx.events.SliderEvent;
 	
@@ -169,9 +170,9 @@ package classes.components
 			} catch (err:Error){
 				trace( err.message );
 				
-			} 
+			}
 			
-			setFilter();
+			setFilter(); 
 			
 		}
 		
@@ -185,7 +186,7 @@ package classes.components
 			}
 			
 			for each (var filterInfo:Object in filterInformation) {
-				if(filterInfo.id == selectedFilter.id) {
+				if(filterInfo.comboLabel == selectedFilter.comboLabel) {
 					return filterInfo;
 				}
 			}
@@ -239,6 +240,9 @@ package classes.components
 		{
 			_searchComboBox.selectedIndex  = 0;
 			_filterBox.removeAllChildren();
+			_activeSearchComp.dbData.filterFunction = null;
+			_activeSearchComp.dbData.refresh();
+			
 		}
 		
 		/* ----------------------------------------------------------------------------------------------- */
@@ -250,8 +254,6 @@ package classes.components
 			 */ 
 			private function changeFilterType(event:ListEvent):void
 			{
-				_activeSearchComp.dbData.filterFunction = null;
-				_activeSearchComp.dbData.refresh();
 				_activeSearchComp.activeFilter = _activeSearchComp.filterInformation[ event.currentTarget.selectedIndex ];
 				//_activeSearchComp.activeFilter = _activeSearchComp.selectedItem;
 					
@@ -263,7 +265,7 @@ package classes.components
 			 * <code>searchGrid</code>
 			 * <ul><li><emp>alphanum</emp>: A <code>clearTextInput</code> is shown for alphanumeric search.</li>
 			 * <li><emp>numeric</emp>: A <i>flexlib</i> <code>HSlider</code> is showwn with to thumbs to select the <emp>numeric range</emp>.</li>
-			 * <li>date: A <i>flexlib</i> <code>HSlider</code> is shown wwith to thumbs to select the <emp>date
+			 * <li>date: A <i>flexlib</i> <code>HSlider</code> is shown with to thumbs to select the <emp>date
 			 *  range</emp>.</li></ul>
 			 */
 			private function setFilter():void
@@ -275,14 +277,18 @@ package classes.components
 						// add to display list
             			_filterBox.addChild(_searchFilterText);
             			
-            			// set filter function
-            			_activeSearchComp.dbData.filterFunction = alphanumFilterFunction;
+            			
             			
             			// set filter value
             			_searchFilterText.text = _activeSearchComp.activeFilter.value;
             			
+            			// set filter function
+            			_activeSearchComp.dbData.filterFunction = alphanumFilterFunction;
+            			_activeSearchComp.dbData.refresh();
+            			
             			// initialize the filter
             			_searchFilterText.dispatchEvent( new Event(Event.CHANGE) );
+	            		
             			
 					break;
 					case "numeric":
@@ -325,8 +331,6 @@ package classes.components
 					break;
 				}
 				
-				//_activeSearchComp.dbData.refresh();
-				trace("");
 			}
 			
 			/* ------------------------------
@@ -341,24 +345,25 @@ package classes.components
 			 */
 			private function alphanumFilter(event:Event):void
 			{
-
+				
 				// updating filter info
 				_activeSearchComp.activeFilter.value = _searchFilterText.text;
 				_activeSearchComp.filterInformation[ _searchComboBox.selectedIndex ].value = _searchFilterText.text;
-				
+				_activeSearchComp.dbData.filterFunction = alphanumFilterFunction;
 				_activeSearchComp.dbData.refresh();
+				trace("filtering");
+				
 			}
+			
 			
 			/**
 			 * Alphanumeric filter callback function
 			 */
 			private function alphanumFilterFunction(entry:Object) : Boolean
 			{
-				
 				var isMatch:Boolean = false;
 				var searchCol:String = _searchComboBox.selectedItem.col;
-				
-			
+				var i:uint = 1;
 				for (var prop:String in entry) 
 				{
  				  	if(prop == searchCol)
@@ -369,16 +374,14 @@ package classes.components
  				  		
 	 				  		if(entry[prop].toLowerCase().search(_searchFilterText.text.toLowerCase()) != -1)
 							{
-								isMatch = true
-								//trace ("Alphanum Filter found for " + searchFilterText.text.toLowerCase() + " in col " + searchCol);
+								isMatch = true;
 							}
  				  		}
- 				  	}             
+ 				  	}
+ 				  	            
 				}			
 				
 				return isMatch;     
-
-				//dbData.refresh();
 			}
 			
 			/* ---------------------------------------------------------------------
@@ -389,11 +392,13 @@ package classes.components
 			 */			
 			private function rangeFilterNumeric(event:SliderChangedEvent):void
 			{
-				_activeSearchComp.dbData.refresh();
 				
 				// updating filter info
 				_activeSearchComp.activeFilter.value = _searchFilterRangeNumeric.slider.values;
 				_activeSearchComp.filterInformation[ _searchComboBox.selectedIndex ].value = _searchFilterRangeNumeric.slider.values;
+				
+				_activeSearchComp.dbData.refresh();
+				
 			}
 			
 			/**
@@ -424,7 +429,6 @@ package classes.components
 				
 				return isMatch;     
 
-				//dbData.refresh();
 			}
 			
 			/* ---------------------------------------------------------------------
@@ -436,10 +440,11 @@ package classes.components
 			private function rangeFilterDate(event:SliderChangedEvent):void
 			{
 				
-				_activeSearchComp.dbData.refresh();
 				// updating filter info
 				_activeSearchComp.activeFilter.value = _searchFilterRangeDate.slider.values;
 				_activeSearchComp.filterInformation[ _searchComboBox.selectedIndex ].value = _searchFilterRangeDate.slider.values;
+				_activeSearchComp.dbData.refresh();
+				
 				
 			}
 			
